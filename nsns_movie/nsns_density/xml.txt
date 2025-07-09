@@ -1,0 +1,18 @@
+View:
+viewNormal = (0, 1.2, 1)
+focus = (0, 0, 0)
+viewUp = (-0.2, -1.2, 1)
+viewAngle = 30
+parallelScale = 120
+nearPlane = -10000
+farPlane = 10000
+imagePan = (0, 0)
+imageZoom = 3
+perspective = 1
+eyeAngle = 2
+centerOfRotationSet = 0
+centerOfRotation = (7.2533, 7.2533, 0)
+axis3DScaleFlag = 0
+axis3DScales = (1, 1, 1)
+shear = (0, 0, 1)
+windowValid = 0
