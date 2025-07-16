@@ -62,7 +62,7 @@ bpy.context.scene.world.node_tree.nodes["Background"].inputs[0].default_value = 
 #-----------------------Append blender file---------------------------#
 
 
-if with_blend_file == 1:
+if with_blend_file == "1":
     print("Using blender file")
     # Check if the file exists
     if not os.path.exists(blend_file_path):
@@ -167,7 +167,7 @@ camera_data.clip_end = 10000.0
 
 #------Add density------#
 
-if with_density == 1
+if with_density == "1"
     print("Adding density...")
     # Add a plane and assign new material with image
     bpy.ops.mesh.primitive_plane_add(size=50, enter_editmode=False, location=(0, 0, 0))
@@ -200,7 +200,7 @@ else:
 
 #-----------------Add bh----------------#
 
-if with_bh == 1:
+if with_bh == "1":
     print("Adding bh as solid sphere")
     with open(bh_file, 'r') as file:
         lines = file.readlines()
@@ -284,7 +284,7 @@ time_obj.visible_shadow = False
 
 # -----------------ADD 0 plane--------#
 
-if zero_plane == 1:
+if zero_plane == "1":
     bpy.ops.mesh.primitive_cube_add(location=(0, 0, 0))
     cube = bpy.context.active_object
     cube.scale = (1000, 2, 1000) 
@@ -294,7 +294,7 @@ if zero_plane == 1:
 
 # ----------------------------Save Blender File------------------------------------------- #
 
-if save_blender_file == 1:
+if save_blender_file == "1":
     print("Save blender files...")
     final_filename = "final.blend"
     ## Construct the full path to save the file.
