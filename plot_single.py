@@ -21,7 +21,7 @@ with_blend_file = argv[argv.index("--") + 11]
 with_density = argv[argv.index("--") + 12]
 with_bh = argv[argv.index("--") + 13]
 save_blender_file = argv[argv.index("--") + 14]
-zero_plane = argv[argv.index("--") + 14]
+zero_plane = argv[argv.index("--") + 15]
 sys.path.append(shader_dir)
 
 from shader_grid_solidlightblue import shader_gridwb_node_group
@@ -41,7 +41,7 @@ bpy.ops.object.delete(use_global=False)
 bpy.context.scene.render.use_simplify = True
 bpy.context.scene.cycles.samples = 128 # above 128 doesnt really matter
 # Set scene camera and rendering engine
-bpy.context.scene.camera = camera_used
+
 bpy.context.scene.render.engine = 'CYCLES'
 #bpy.context.scene.render.engine = 'BLENDER_EEVEE_NEXT'
 #bpy.context.scene.render.engine = 'BLENDER_WORKBENCH'
@@ -51,6 +51,12 @@ bpy.context.scene.cycles.tile_y = 16
 
 # Set world background color (Gray background)
 bpy.context.scene.world.node_tree.nodes["Background"].inputs[0].default_value = (0.006, 0.006, 0.051, 1)
+
+# Set thread mode to 'FIXED'
+bpy.context.scene.cycles.device = 'CPU'
+bpy.context.scene.render.threads_mode = 'FIXED'
+bpy.context.scene.render.threads = 20
+
 #dark dark blue(0.006, 0.006, 0.051, 1)
 #dark blue(0.129, 0.2, 0.271, 1)
 #kind of dark blue(0.188, 0.306, 0.42, 1) 
@@ -160,6 +166,7 @@ bpy.context.collection.objects.link(camera_used)
 camera_used.location = (600, -475, -160) #for bh cluster(2270, -1753, -537)
 camera_used.rotation_euler = (296*np.pi/180, -108.19*np.pi/180, -153.6*np.pi/180) #(295.2*np.pi/180, -107.94*np.pi/180, -152.05*np.pi/180)
 camera_data.clip_end = 10000.0
+bpy.context.scene.camera = camera_used
 #-----------------------Add sunlight and camera---------------------------#
 
 
@@ -167,7 +174,7 @@ camera_data.clip_end = 10000.0
 
 #------Add density------#
 
-if with_density == "1"
+if with_density == "1":
     print("Adding density...")
     # Add a plane and assign new material with image
     bpy.ops.mesh.primitive_plane_add(size=50, enter_editmode=False, location=(0, 0, 0))
@@ -285,9 +292,12 @@ time_obj.visible_shadow = False
 # -----------------ADD 0 plane--------#
 
 if zero_plane == "1":
+    print("Add 0-plane")
     bpy.ops.mesh.primitive_cube_add(location=(0, 0, 0))
     cube = bpy.context.active_object
     cube.scale = (1000, 2, 1000) 
+else:
+    print("Does not add 0-plane")
 
 # -----------------ADD 0 plane--------#
 
