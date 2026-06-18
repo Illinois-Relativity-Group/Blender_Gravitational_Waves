@@ -166,6 +166,21 @@ bpy.context.collection.objects.link(camera_used)
 camera_used.location = (600, -475, -160) #for bh cluster(2270, -1753, -537)
 camera_used.rotation_euler = (296*np.pi/180, -108.19*np.pi/180, -153.6*np.pi/180) #(295.2*np.pi/180, -107.94*np.pi/180, -152.05*np.pi/180)
 camera_data.clip_end = 10000.0
+
+# --- Zoom to match the VisIt disk view (imageZoom = 15 in bhdisk_sol05_disk_view3d.xml) ---
+# VisIt zooms about the FOCUS (origin); the artist camera is ~4 deg off the origin, which is
+# fine at the wide base FOV but throws the BH center out of frame at 15x. So first re-aim the
+# optical axis exactly at the origin (minimal rotation -> roll preserved), then narrow the FOV
+# 15x via focal length (base 50 mm / 36 mm sensor). MUST stay in sync with the grid-shader
+# frequency factor in shader_grid_solidlightblue.py:shader_twoblue_3.
+ZOOM = 15.0
+_base_rot   = camera_used.rotation_euler.to_matrix()
+_fwd        = _base_rot @ mathutils.Vector((0.0, 0.0, -1.0))
+_to_origin  = (mathutils.Vector((0.0, 0.0, 0.0)) - camera_used.location).normalized()
+_realign    = _fwd.rotation_difference(_to_origin)          # minimal rotation, keeps roll
+camera_used.rotation_euler = (_realign.to_matrix() @ _base_rot).to_euler()
+camera_data.lens = 50.0 * ZOOM                              # 50 mm base -> 750 mm = 15x zoom
+
 bpy.context.scene.camera = camera_used
 #-----------------------Add sunlight and camera---------------------------#
 
@@ -281,9 +296,16 @@ if "Material" not in [n.name for n in time_group.nodes]:
     links.new(last_socket, material_node.inputs["Geometry"])
     links.new(material_node.outputs["Geometry"], time_output.inputs["Geometry"])
 
-time_obj.location = mathutils.Vector((-12.65,  -55, 177.76)) #mathutils.Vector((-236, 1358, -1867))
-time_obj.rotation_euler = (294*np.pi/180, -108*np.pi/180, -152*np.pi/180) #(np.deg2rad(153.74), np.deg2rad(1.9617), np.deg2rad(182.64))
-time_obj.scale *= 0.8  #0.086
+# Pin the label to the TOP-RIGHT corner: parent it to the camera and place it in camera space
+# (x=right, y=up, -z=forward) so it stays put at any zoom/aim. At distance _D the visible frame
+# half-extents are _D*tan(hfov/2) wide (=_D*18/lens) and *(9/16) tall (16:9). Text is align_x=CENTER,
+# align_y=TOP_BASELINE (Size=33.6 native): centered on its origin-x, hangs below origin-y.
+_D = 100.0
+time_obj.parent = camera_used
+time_obj.matrix_parent_inverse = mathutils.Matrix.Identity(4)   # local transform == camera-space
+time_obj.location = mathutils.Vector((1.55, 1.20, -_D))         # top-right, inside right/top margins
+time_obj.rotation_euler = (0.0, 0.0, 0.0)                       # face the camera (text in its XY plane)
+time_obj.scale = (0.008, 0.008, 0.008)                          # ~10% of frame height (33.6*0.008/2.7)
 time_obj.visible_shadow = False
 # --------------------- Add Time bar--------------------- #
 
