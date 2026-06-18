@@ -65,7 +65,7 @@ def time_node_group():
     #node Fill Curve
     fill_curve = time.nodes.new("GeometryNodeFillCurve")
     fill_curve.name = "Fill Curve"
-    fill_curve.mode = 'TRIANGLES'
+    # fill_curve.mode = 'TRIANGLES'   # Blender 5.0: GeometryNodeFillCurve.mode removed; default fill is fine
     #Group ID
     fill_curve.inputs[1].default_value = 0
 
@@ -143,5 +143,5 @@ def time_node_group():
     time.links.new(string.outputs[0], join_strings.inputs[1])
     return time
 
-time = time_node_group()
+# time = time_node_group()   # leftover module-level demo call; do not build node group on import
 

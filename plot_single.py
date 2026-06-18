@@ -29,9 +29,9 @@ from shader_grid_solidlightblue import blue
 from shader_grid_solidlightblue import shader_twoblue_3
 from time_bar import time_node_group
 import shader_grid_solidlightblue
-from change_color import changecolor_node_group
+# from change_color import changecolor_node_group   # only needed for plot_mem=1; module-level demo crashes on Blender 5.0
 #from change_color import nsns_node_group
-from nsns_density import nsns_node_group
+# from nsns_density import nsns_node_group           # only needed for with_density=1
 
 # Delete all objects in the scene
 bpy.ops.object.select_all(action='SELECT')
@@ -46,8 +46,8 @@ bpy.context.scene.render.engine = 'CYCLES'
 #bpy.context.scene.render.engine = 'BLENDER_EEVEE_NEXT'
 #bpy.context.scene.render.engine = 'BLENDER_WORKBENCH'
 
-bpy.context.scene.cycles.tile_x = 16
-bpy.context.scene.cycles.tile_y = 16
+# bpy.context.scene.cycles.tile_x = 16   # Blender 5.0: tile_x/tile_y removed (automatic tiling)
+# bpy.context.scene.cycles.tile_y = 16
 
 # Set world background color (Gray background)
 bpy.context.scene.world.node_tree.nodes["Background"].inputs[0].default_value = (0.006, 0.006, 0.051, 1)
@@ -93,7 +93,7 @@ bpy.ops.wm.obj_import(filepath=frame_dir + filename,
                         forward_axis='NEGATIVE_Z', up_axis='Y')
 for obj in bpy.context.selected_objects:
     obj.name = "wave"
-    obj.scale.z *= 2 #3
+    obj.scale.z *= 10 # blender z-scale (ZSCALE); 10 for rhphc-data mesh test (was 2)
     obj.rotation_euler = (90*np.pi/180, -120*np.pi/180, 0)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     bpy.ops.object.shade_smooth()
@@ -107,7 +107,7 @@ obj = bpy.data.objects["wave"]
 
 
 #------Boolean------#
-bpy.ops.mesh.primitive_cylinder_add(radius=32, depth=300, location=(0, 0, 0))
+bpy.ops.mesh.primitive_cylinder_add(radius=20, depth=1000, location=(0, 0, 0))
 cylinder = bpy.context.active_object
 cylinder.name = "Boolean_Cylinder"
 cylinder.rotation_euler[0] = math.radians(90)
@@ -117,7 +117,7 @@ cylinder.hide_render = True
 boolean = obj.modifiers.new(name="Boolean_Diff", type='BOOLEAN')
 boolean.object = cylinder
 boolean.operation = 'DIFFERENCE'
-boolean.solver = 'FAST'
+boolean.solver = 'FLOAT'   # Blender 5.0: 'FAST' renamed to 'FLOAT' (enum FLOAT/EXACT/MANIFOLD)
 #------Boolean------#
 
 
@@ -250,7 +250,7 @@ if with_bh == "1":
 time_group = time_node_group()
 for node in time_group.nodes:
     if node.name == "Value to String":
-        node.inputs[0].default_value = frame_number * 3.52 / 2.7
+        node.inputs[0].default_value = frame_number * 0.056325 / 0.0603349020955639  # t/M = frame*dt/M_ADM (physical), was NSNS 3.52/2.7
         break
 
 # Create a new empty mesh object to host the time text geometry
