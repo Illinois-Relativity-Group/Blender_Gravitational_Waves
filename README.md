@@ -46,6 +46,14 @@ sbatch submit_render_array_shared.sh      # full render (48 array tasks)
 | VTK → OBJ | `convert_objs_parallel.py` (via `make_objs.sh`) | `obj_data/hplus_NNNNNN.obj` |
 | OBJ → render | `plot_single.py` (via `render_meshes.sh`) | `render_mesh/hplus_NNNNNN.obj.png` (1920×1080) |
 
+## Compositing the disk into the hole
+
+`plot_single.py` can drop an accretion-disk render into the central hole via the `with_density`
+flag (the 12th positional render arg; `render_meshes.sh` passes `0` = off). Set it to `1` to lay
+the disk *image* on a flat plane in the orbital plane (true scale, foreshortened by the grazing
+camera). Point the image at your disk render — `plot_single.py:222` `image_path` (currently a
+single hardcoded test frame; build the path per-frame for a movie).
+
 ## Notes
 
 - `legacy/` holds the tuning/diagnostic one-offs (camera/view dumpers, single-file converters,
