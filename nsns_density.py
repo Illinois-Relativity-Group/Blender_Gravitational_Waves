@@ -45,7 +45,7 @@ def nsns_node_group(image_path):
 
     # Connect image color to base color and emission
     nsns.links.new(image_texture.outputs["Color"], principled_bsdf.inputs["Base Color"])
-    nsns.links.new(image_texture.outputs["Color"], principled_bsdf.inputs[27])
+    nsns.links.new(image_texture.outputs["Color"], principled_bsdf.inputs["Emission Color"])  # Blender 5.0: index 27 shifted, use name
 
     # Connect alpha to alpha input
     nsns.links.new(image_texture.outputs["Alpha"], principled_bsdf.inputs["Alpha"])

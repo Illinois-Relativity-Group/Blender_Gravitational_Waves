@@ -1,3 +1,13 @@
+# ============================================================================
+#  LOCKED LOOK -- the dialed-in mesh view. Change these only to RE-tune the view;
+#  they are intentionally not exposed in config.sh so the reproduction stays fixed.
+#    samples            = 64        (line ~42)
+#    ZSCALE             = obj.scale.z *= 1.5     (line ~96; wave height)
+#    central hole       = cylinder radius 10     (line ~110)
+#    camera _DOLLY_DIST = 250.0     (line ~170)   ELEV_DEG = 37.4   lens = 50mm
+#    shader brick Scale = 0.0625    (shader_grid_solidlightblue.py; tracks 0.02*781.8/dist)
+#  Paths/frames come from config.sh via the CLI args this script is called with.
+# ============================================================================
 import bpy
 import sys
 import math
@@ -31,7 +41,7 @@ from time_bar import time_node_group
 import shader_grid_solidlightblue
 # from change_color import changecolor_node_group   # only needed for plot_mem=1; module-level demo crashes on Blender 5.0
 #from change_color import nsns_node_group
-# from nsns_density import nsns_node_group           # only needed for with_density=1
+from nsns_density import nsns_node_group           # with_density=1: disk card laid in the orbital plane
 
 # Delete all objects in the scene
 bpy.ops.object.select_all(action='SELECT')
@@ -39,7 +49,7 @@ bpy.ops.object.delete(use_global=False)
 
 #-----------------------Setting for Faster Rendering---------------------------#
 bpy.context.scene.render.use_simplify = True
-bpy.context.scene.cycles.samples = 128 # above 128 doesnt really matter
+bpy.context.scene.cycles.samples = 64 # TEST: 64 for fast 15x balance-inspection loop; RESTORE to 128 for production
 # Set scene camera and rendering engine
 
 bpy.context.scene.render.engine = 'CYCLES'
@@ -55,7 +65,7 @@ bpy.context.scene.world.node_tree.nodes["Background"].inputs[0].default_value = 
 # Set thread mode to 'FIXED'
 bpy.context.scene.cycles.device = 'CPU'
 bpy.context.scene.render.threads_mode = 'FIXED'
-bpy.context.scene.render.threads = 20
+bpy.context.scene.render.threads = int(os.environ.get("BLENDER_THREADS", "20"))  # env-driven for on-node concurrency (movie farm packs ~10 procs x 12 threads/node); default 20 unchanged
 
 #dark dark blue(0.006, 0.006, 0.051, 1)
 #dark blue(0.129, 0.2, 0.271, 1)
@@ -93,7 +103,7 @@ bpy.ops.wm.obj_import(filepath=frame_dir + filename,
                         forward_axis='NEGATIVE_Z', up_axis='Y')
 for obj in bpy.context.selected_objects:
     obj.name = "wave"
-    obj.scale.z *= 10 # blender z-scale (ZSCALE); 10 for rhphc-data mesh test (was 2)
+    obj.scale.z *= 1.5 # blender z-scale (ZSCALE); testing 1.5 (was 0.3 -> 5x taller). Total z-amp = scale_factor(5000)*1.5 = 7500. Cheap knob: edit + re-render, no mesh regen.
     obj.rotation_euler = (90*np.pi/180, -120*np.pi/180, 0)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     bpy.ops.object.shade_smooth()
@@ -107,7 +117,7 @@ obj = bpy.data.objects["wave"]
 
 
 #------Boolean------#
-bpy.ops.mesh.primitive_cylinder_add(radius=20, depth=1000, location=(0, 0, 0))
+bpy.ops.mesh.primitive_cylinder_add(radius=10, depth=1000, location=(0, 0, 0))  # 10 M_sun central cutout; the 7 M_sun disk seats inside with a ~3 M_sun ring of margin
 cylinder = bpy.context.active_object
 cylinder.name = "Boolean_Cylinder"
 cylinder.rotation_euler[0] = math.radians(90)
@@ -163,23 +173,31 @@ camera_data = bpy.data.cameras.new(name="Camera")
 camera_used = bpy.data.objects.new("Camera", camera_data)
 bpy.context.collection.objects.link(camera_used)
 
-camera_used.location = (600, -475, -160) #for bh cluster(2270, -1753, -537)
+# --- Camera elevation control (raise = more top-down: covers more ground-plane, hole sits centered not "on the ceiling", disk more face-on) ---
+# Disk/orbital plane normal in Blender world = (0,-1,0). Keep the artist camera's azimuth + distance
+# (orig pos (600,-475,-160), dist 781.79, elev 37.4 deg); change ONLY the elevation angle above the plane.
+_az_xz   = mathutils.Vector((600.0, -160.0)); _az_xz.normalize()   # in-plane (x,z) direction
+_DOLLY_DIST = 250.0                                               # DOLLY distance (orig 781.79). Closer = bigger hole: d=250 -> visible ±90 M_sun, the 10 M_sun hole reads ~11% of frame width (~33% smaller than d=170). Wide 50mm lens (perspective kept). Shader brick Scale MUST track: S = 0.02*781.8/_DOLLY_DIST (0.0625 at d=250). Needs the wider ±200 M_sun mesh (obj_data_zoom200) so far corners stay covered.
+ELEV_DEG = 37.4                                                   # artist/reference grazing angle. LOWER = more grazing/receding plane; HIGHER = more top-down.
+_el      = ELEV_DEG * np.pi/180.0
+_horiz   = _DOLLY_DIST * np.cos(_el); _height = _DOLLY_DIST * np.sin(_el)
+camera_used.location = (_horiz*_az_xz.x, -_height, _horiz*_az_xz.y)  # y<0 = above plane (normal is -y). orig (600,-475,-160) #for bh cluster(2270, -1753, -537)
 camera_used.rotation_euler = (296*np.pi/180, -108.19*np.pi/180, -153.6*np.pi/180) #(295.2*np.pi/180, -107.94*np.pi/180, -152.05*np.pi/180)
 camera_data.clip_end = 10000.0
 
-# --- Zoom to match the VisIt disk view (imageZoom = 15 in bhdisk_sol05_disk_view3d.xml) ---
-# VisIt zooms about the FOCUS (origin); the artist camera is ~4 deg off the origin, which is
-# fine at the wide base FOV but throws the BH center out of frame at 15x. So first re-aim the
-# optical axis exactly at the origin (minimal rotation -> roll preserved), then narrow the FOV
-# 15x via focal length (base 50 mm / 36 mm sensor). MUST stay in sync with the grid-shader
-# frequency factor in shader_grid_solidlightblue.py:shader_twoblue_3.
-ZOOM = 15.0
+# --- WIDE 50mm lens (ZOOM=1): keep wide-angle perspective (converging grid lines). We zoom in by
+# DOLLYING the camera closer (_DOLLY_DIST above), NOT by telephoto. A 15x telephoto (lens 750mm,
+# ~1.5deg FOV) is near-orthographic and KILLS the converging perspective the user wants -> abandoned.
+# First re-aim the optical axis exactly at the origin (minimal rotation -> roll preserved); the
+# re-aim auto-tracks the origin from the new closer position. Grid-shader brick Scale in
+# shader_grid_solidlightblue.py:shader_twoblue_3 MUST track magnification: S = 0.02*781.8/_DOLLY_DIST.
+ZOOM = 1.0
 _base_rot   = camera_used.rotation_euler.to_matrix()
 _fwd        = _base_rot @ mathutils.Vector((0.0, 0.0, -1.0))
 _to_origin  = (mathutils.Vector((0.0, 0.0, 0.0)) - camera_used.location).normalized()
 _realign    = _fwd.rotation_difference(_to_origin)          # minimal rotation, keeps roll
 camera_used.rotation_euler = (_realign.to_matrix() @ _base_rot).to_euler()
-camera_data.lens = 50.0 * ZOOM                              # 50 mm base -> 750 mm = 15x zoom
+camera_data.lens = 50.0 * ZOOM                              # ZOOM=1 -> wide 50 mm (perspective kept). Zoom-in is via _DOLLY_DIST, not lens.
 
 bpy.context.scene.camera = camera_used
 #-----------------------Add sunlight and camera---------------------------#
@@ -190,29 +208,21 @@ bpy.context.scene.camera = camera_used
 #------Add density------#
 
 if with_density == "1":
-    print("Adding density...")
-    # Add a plane and assign new material with image
-    bpy.ops.mesh.primitive_plane_add(size=50, enter_editmode=False, location=(0, 0, 0))
+    print("Adding disk card laid IN the orbital plane (true-scale, foreshortened by the camera)...")
+    # VisIt top-down ORTHO disk render textured on a flat plane in the orbital plane.
+    # Image (parallelScale=10, 1920x1080) maps to 35.6 x 20 M_sun -> half-extents 17.8 (horiz) x 10 (vert).
+    bpy.ops.mesh.primitive_plane_add(size=2, enter_editmode=False, location=(0, 0, 0))
     plane = bpy.context.active_object
-    plane.location.y -= 20
+    plane.scale = (17.8, 10.0, 1.0)                  # M_sun half-extents (image true scale)
+    plane.rotation_euler = (math.radians(90), 0, 0)  # lie in orbital plane: normal +z -> (0,-1,0), faces camera
+    plane.location = (0.0, -0.2, 0.0)                # at origin, nudged 0.2 toward camera (-y) to clear the mesh sheet
+    bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
 
-    print("temp_frame_number:" + str(frame_number))
-    print("density_number:" + str(round(frame_number/3)+1))
-
-    image_filename = f"memory_{round(frame_number/3)+1}.png"
-    image_path = os.path.join(density_folder, image_filename)
-
-
+    # TEST: single-frame disk card (label-stripped, transparent bg). For a movie, build path per frame.
+    image_path = "/anvil/scratch/x-yguo11/blender_gw_dev/density_movies/disk_card_0010.png"
     plane_mat = nsns_node_group(image_path)
     plane.data.materials.append(plane_mat)
-
-    copy_rot = plane.constraints.new(type='COPY_ROTATION')
-    copy_rot.target = camera_used  # camera_used is your camera object
-    copy_rot.use_x = True
-    copy_rot.use_y = True
-    copy_rot.use_z = True
-    copy_rot.target_space = 'WORLD'
-    copy_rot.owner_space = 'WORLD'
+    # NO COPY_ROTATION billboard: the disk must lie flat and foreshorten with the grazing camera.
 else:
     print("Not adding density")
 #------Add density------#
@@ -303,9 +313,9 @@ if "Material" not in [n.name for n in time_group.nodes]:
 _D = 100.0
 time_obj.parent = camera_used
 time_obj.matrix_parent_inverse = mathutils.Matrix.Identity(4)   # local transform == camera-space
-time_obj.location = mathutils.Vector((1.55, 1.20, -_D))         # top-right, inside right/top margins
+time_obj.location = mathutils.Vector((23.25, 15.75, -_D))       # top-right; rescaled x15 (=750/50) from the old 750mm telephoto coords (1.55,1.05) for the wide 50mm lens. At z=-_D, frame half-extents are W=_D*18/50=36 wide, H=20.25 tall -> this is 65%/78% toward the top-right corner.
 time_obj.rotation_euler = (0.0, 0.0, 0.0)                       # face the camera (text in its XY plane)
-time_obj.scale = (0.008, 0.008, 0.008)                          # ~10% of frame height (33.6*0.008/2.7)
+time_obj.scale = (0.12, 0.12, 0.12)                            # ~10% of frame height (33.6*0.12/40.5); rescaled x15 from telephoto 0.008 for the 50mm lens
 time_obj.visible_shadow = False
 # --------------------- Add Time bar--------------------- #
 

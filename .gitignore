@@ -1,0 +1,22 @@
+# .gitignore for blender_gw_dev -- ignore local generated data / render outputs.
+# Nothing here is deleted from disk; these are all regenerable from the pipeline.
+
+# --- python cache / logs ---
+__pycache__/
+*.pyc
+*.log
+
+# --- generated OBJ meshes (converted from VTK; very large) ---
+obj_data/
+obj_data_*/
+
+# --- Blender render outputs (mesh frames, composites, tuning renders) ---
+render_*/
+
+# --- movie frame sequences ---
+frames_*/
+density_movies/
+
+# --- Blender debug saves ---
+*.blend1
+**/final.blend

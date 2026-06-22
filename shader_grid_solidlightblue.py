@@ -498,9 +498,9 @@ def shader_twoblue_3():
     brick_texture.inputs[2].default_value = (1.0, 1.0, 1.0, 1.0)
     #Mortar
     brick_texture.inputs[3].default_value = (0.0, 0.0, 0.0, 1.0)
-    #Scale  (grid frequency: base 0.02 x15 so the apparent grid count holds at VisIt imageZoom=15;
-    #         must track the camera ZOOM in plot_single.py)
-    brick_texture.inputs[4].default_value = 0.29999999329447746
+    #Scale  (grid frequency: tracks the camera DOLLY magnification so apparent grid count holds.
+    #         S = 0.02*781.8/_DOLLY_DIST in plot_single.py; 0.13 for _DOLLY_DIST=120. base 0.02 = wide render_fix view.)
+    brick_texture.inputs[4].default_value = 0.0625
     #Mortar Size  (fraction of a cell, so line-to-cell ratio is preserved at higher Scale -> no change)
     brick_texture.inputs[5].default_value = 0.014999999664723873
     #Mortar Smooth

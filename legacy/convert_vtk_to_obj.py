@@ -69,8 +69,8 @@ def convert_and_process_vtk(vtk_input_dir, final_output_dir, radius, start=None,
         scalar_field = mesh.point_data["GW-FIELD"]
 
         # Create grid coordinates.
-        x = np.linspace(-1000.0, 1000.0, x_dim)
-        y = np.linspace(-1000.0, 1000.0, y_dim)
+        x = np.linspace(-200.0, 200.0, x_dim)   # MUST match params_gw.py xy_max_2D (wider crop for dolly-back; was +-120, +-1000)
+        y = np.linspace(-200.0, 200.0, y_dim)   # MUST match params_gw.py xy_max_2D (wider crop for dolly-back; was +-120, +-1000)
         X, Y = np.meshgrid(x, y)
         Z = scalar_field.reshape(y_dim, x_dim)
         vertices = np.column_stack((X.ravel(), Y.ravel(), Z.ravel()))
