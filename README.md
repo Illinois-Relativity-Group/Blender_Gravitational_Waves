@@ -23,7 +23,7 @@ export VTK_DIR=/path/to/gravity_wave_generation/VTKdata/2D   # input frames
 export OBJ_DIR=$GW_ROOT/obj_data        # OBJ output
 export RENDER_DIR=$GW_ROOT/render_mesh  # rendered PNG output
 export XY_MAX=200   export NDIM=500     # MUST match the GW pipeline's XY_MAX_2D / XY_NUM_2D
-export STRIDE=1                          # movie frame step (4 = every 4th frame)
+export STRIDE=2                          # even frames 0,2,4,... to match density/1D cadence (1 = every frame)
 ```
 
 ## Run
@@ -56,6 +56,16 @@ single hardcoded test frame; build the path per-frame for a movie).
 
 ## Notes
 
+- **Frame cadence.** `STRIDE=2` (default) renders the even frames `0,2,4,…`, halving the count so
+  it matches the density render and the 1D-overlay plots (both step two simulation frames per
+  output frame). `STRIDE=1` renders every frame. `STRIDE` strides the frame *list*, which equals
+  even frame *numbers* because this pipeline's frames are consecutive.
+- **Frames are in simulation time → trim the flat tail.** The mesh is rendered over the *full*
+  simulation (coordinate) time, so after the last gravitational wave has passed the extraction
+  radius the trailing frames go **flat** (no waves). The mesh sequence is therefore **longer than
+  the 1D-overlay sequence** — in a Blender/video-editing session the mesh outlasts the waveform
+  overlay. You can safely **cut the waveless trailing frames** at the end to match the overlay
+  length (the data isn't wrong — it's just quiet ring-down after the signal leaves the grid).
 - `legacy/` holds the tuning/diagnostic one-offs (camera/view dumpers, single-file converters,
   the disk-composite and green-screen movie tools, old drivers). Not needed for the clean path.
 - Generated data (`obj_data*/`, `render_*/`, `frames_*/`, logs) is gitignored; clone ships source.

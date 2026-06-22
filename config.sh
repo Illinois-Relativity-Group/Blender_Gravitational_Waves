@@ -24,6 +24,15 @@ export NDIM=500                              # grid points per side
 export CUT_RADIUS=1.0                        # tiny inner OBJ cut; the visible 10 M_sun hole is cut in Blender
 
 # --- movie ---
-export STRIDE=1                              # frame stride (1 = every frame, 4 = every 4th, ...)
+# Frame cadence. STRIDE=2 (default) renders the EVEN frames 0,2,4,... -> half the count, which
+# matches the density render and the 1D overlay plots (both step 2 sim-frames per frame).
+# STRIDE=1 = every frame. (STRIDE strides the frame *list*; that equals even frame *numbers*
+# only because the frames are consecutive -- true for this pipeline's output.)
+export STRIDE=2                              # even frames (0,2,4,...) to match density / 1D cadence
 export NCONC=10                              # concurrent Blender procs per node (render)
 export BLENDER_THREADS=12                    # cpu threads per Blender proc
+
+# NOTE: frames are rendered over the FULL simulation (coordinate) time, so once the last GW has
+# passed the extraction radius the TRAILING frames go flat (no waves). The mesh sequence therefore
+# outlasts the 1D-overlay sequence -- in your Blender/video editor you can trim the waveless tail
+# frames to match the overlay length.
