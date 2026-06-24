@@ -2,7 +2,7 @@
 #  LOCKED LOOK -- the dialed-in mesh view. Change these only to RE-tune the view;
 #  they are intentionally not exposed in config.sh so the reproduction stays fixed.
 #    samples            = 64        (line ~42)
-#    ZSCALE             = obj.scale.z *= 1.5     (line ~96; wave height)
+#    ZSCALE             = obj.scale.z *= 0.7     (line ~106; wave height; env-overridable)
 #    central hole       = cylinder radius 10     (line ~110)
 #    camera _DOLLY_DIST = 250.0     (line ~170)   ELEV_DEG = 37.4   lens = 50mm
 #    shader brick Scale = 0.0625    (shader_grid_solidlightblue.py; tracks 0.02*781.8/dist)
@@ -103,7 +103,7 @@ bpy.ops.wm.obj_import(filepath=frame_dir + filename,
                         forward_axis='NEGATIVE_Z', up_axis='Y')
 for obj in bpy.context.selected_objects:
     obj.name = "wave"
-    obj.scale.z *= 1.5 # blender z-scale (ZSCALE); testing 1.5 (was 0.3 -> 5x taller). Total z-amp = scale_factor(5000)*1.5 = 7500. Cheap knob: edit + re-render, no mesh regen.
+    obj.scale.z *= float(os.environ.get("ZSCALE", "0.7")) # blender z-scale (ZSCALE); LOCKED default 0.7. Total z-amp = scale_factor(5000)*ZSCALE (=3500 at 0.7). Cheap knob via env (default unchanged, so the locked look is preserved); no mesh regen.
     obj.rotation_euler = (90*np.pi/180, -120*np.pi/180, 0)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     bpy.ops.object.shade_smooth()
@@ -208,21 +208,30 @@ bpy.context.scene.camera = camera_used
 #------Add density------#
 
 if with_density == "1":
-    print("Adding disk card laid IN the orbital plane (true-scale, foreshortened by the camera)...")
-    # VisIt top-down ORTHO disk render textured on a flat plane in the orbital plane.
-    # Image (parallelScale=10, 1920x1080) maps to 35.6 x 20 M_sun -> half-extents 17.8 (horiz) x 10 (vert).
+    print("Adding disk as a camera-facing billboard at the disk depth (meshmatch view)...")
+    # The _gw_ disk frames are VisIt-rendered from this SAME 37.4-deg grazing view (the 'meshmatch'
+    # view: parallelScale 50.625 == this render's half-height in M_sun at _DOLLY_DIST). They are
+    # therefore ALREADY foreshortened to the camera, so we must NOT lay them flat in the orbital
+    # plane (that would foreshorten a second time -> squashed disk). Instead we billboard the frame
+    # facing the camera, centered on the optical axis at the ORIGIN's depth, sized to fill the render
+    # 1:1 (the same full-frame overlay the 2D composite used) -- but now as a real plane at depth, so
+    # the z-buffer interleaves it with the waves: foreground crests occlude the disk, and the disk
+    # occludes troughs behind it. The transparent (alpha-0) background shows the waves/white-plane.
+    # Per-frame disk image comes from DISK_IMAGE (the driver sets it); falls back to the test card.
+    image_path = os.environ.get("DISK_IMAGE",
+        "/anvil/scratch/x-yguo11/blender_gw_dev/density_movies/disk_card_0010.png")
+    _Dorig = _DOLLY_DIST                                                # origin sits on-axis at the camera distance
+    _hw = _Dorig * (camera_data.sensor_width / 2.0) / camera_data.lens  # render half-width (M_sun) at that depth
+    _rh = bpy.context.scene.render.resolution_y / bpy.context.scene.render.resolution_x
     bpy.ops.mesh.primitive_plane_add(size=2, enter_editmode=False, location=(0, 0, 0))
     plane = bpy.context.active_object
-    plane.scale = (17.8, 10.0, 1.0)                  # M_sun half-extents (image true scale)
-    plane.rotation_euler = (math.radians(90), 0, 0)  # lie in orbital plane: normal +z -> (0,-1,0), faces camera
-    plane.location = (0.0, -0.2, 0.0)                # at origin, nudged 0.2 toward camera (-y) to clear the mesh sheet
+    plane.name = "disk_billboard"
+    plane.rotation_euler = camera_used.rotation_euler                  # face the camera, upright (no roll)
+    plane.scale = (_hw, _hw * _rh, 1.0)                                # fill the frame 1:1 at depth _Dorig
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
-
-    # TEST: single-frame disk card (label-stripped, transparent bg). For a movie, build path per frame.
-    image_path = "/anvil/scratch/x-yguo11/blender_gw_dev/density_movies/disk_card_0010.png"
+    plane.visible_shadow = False                                      # don't cast the disk card's shadow on the waves
     plane_mat = nsns_node_group(image_path)
     plane.data.materials.append(plane_mat)
-    # NO COPY_ROTATION billboard: the disk must lie flat and foreshorten with the grazing camera.
 else:
     print("Not adding density")
 #------Add density------#

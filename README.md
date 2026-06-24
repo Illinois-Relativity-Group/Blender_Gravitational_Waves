@@ -46,6 +46,35 @@ sbatch submit_render_array_shared.sh      # full render (48 array tasks)
 | VTK → OBJ | `convert_objs_parallel.py` (via `make_objs.sh`) | `obj_data/hplus_NNNNNN.obj` |
 | OBJ → render | `plot_single.py` (via `render_meshes.sh`) | `render_mesh/hplus_NNNNNN.obj.png` (1920×1080) |
 
+## Movie runs (`MOVIES/`)
+
+Each full render goes into its own **timestamped** directory under `MOVIES/` (gitignored), so runs
+don't pile up loose in the repo root. Launch one with:
+
+```sh
+# mesh-only:
+OBJ_DIR=$PWD/obj_data ./run_movie.sh meshonly_z07
+# mesh + disk composited in-render (the disk "switch"):
+OBJ_DIR=$PWD/obj_data ./run_movie.sh withdisk_z07 --disk
+```
+
+This stamps a dir `MOVIES/<YYMMDD_HHMM>_<run-name>/`, submits the 48-task array into it, and records a
+`run_info.txt` (ZSCALE, STRIDE, OBJ source, disk on/off). Frames land in `<run>/frames/`, SLURM logs in
+`<run>/`. `--disk` needs `disk_manifest.txt` (lines `<6-digit frame> <disk png>`). Point `OBJ_DIR` at the
+full OBJ set — in this workspace that is `obj_data_zoom200`; a fresh clone uses `obj_data` from `make_objs.sh`.
+
+### Continuous relabeling (optional, only for STRIDE ≠ 1)
+
+At `STRIDE=2` the frames are `hplus_000000, 000002, …` (gaps of 2). If your editor wants a gapless
+`0,1,2,…` sequence, run this **once, after the render finishes** — it renames the frames **in place**:
+
+```sh
+./relabel_continuous.sh MOVIES/<run>/frames     # -> frame_000000.png, frame_000001.png, ...
+```
+
+It also writes `frames/mapping.txt` (new name ← original ← physical frame# ← t/M) so the true frame
+index and simulation time stay recoverable. Skip it if your tool reads the gappy `hplus_*.obj.png` names.
+
 ## Compositing the disk into the hole
 
 `plot_single.py` can drop an accretion-disk render into the central hole via the `with_density`

@@ -17,6 +17,13 @@ render_*/
 frames_*/
 density_movies/
 
+# --- assembled movie runs (one timestamped dir per run; see run_movie.sh) ---
+MOVIES/
+
+# --- workspace-local scratch / data (not shipped; paths are machine-specific) ---
+disk_manifest.txt
+_render_*
+
 # --- Blender debug saves ---
 *.blend1
 **/final.blend

@@ -15,8 +15,8 @@ export BLENDER=/anvil/scratch/x-yguo11/software/blender-5.0.0-linux-x64/blender 
 
 # --- paths ---
 export VTK_DIR=/anvil/scratch/x-yguo11/abid_bot_dev/gravity_wave_generation/VTKdata/2D  # input .vtk (from the GW pipeline)
-export OBJ_DIR=$GW_ROOT/obj_data            # OBJ output (make_objs.sh)
-export RENDER_DIR=$GW_ROOT/render_mesh      # rendered frames output (render_meshes.sh)
+export OBJ_DIR="${OBJ_DIR:-$GW_ROOT/obj_data}"          # OBJ output (make_objs.sh); env-overridable
+export RENDER_DIR="${RENDER_DIR:-$GW_ROOT/render_mesh}" # rendered frames output; env-overridable
 
 # --- mesh grid (MUST match the GW pipeline's XY_MAX_2D / XY_NUM_2D) ---
 export XY_MAX=200                            # mesh half-width (M_sun)
