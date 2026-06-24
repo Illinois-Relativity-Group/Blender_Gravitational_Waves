@@ -13,6 +13,8 @@ cd "${SLURM_SUBMIT_DIR:-$(dirname "$0")}"
 source ./config.sh
 . ${MODULESHOME}/init/bash 2>/dev/null || true
 module load anaconda/2024.02-py311 2>/dev/null || true
+# meshio is NOT in the base module -> auto-install it (once) into the user site if missing.
+python3 -c "import meshio" 2>/dev/null || pip install --user -q -r requirements.txt
 export NPROC=${SLURM_NTASKS:-32}
 mkdir -p "$OBJ_DIR"
 echo "START $(date) on $(hostname); NPROC=$NPROC"

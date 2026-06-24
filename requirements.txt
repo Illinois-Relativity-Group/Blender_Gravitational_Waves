@@ -1,0 +1,11 @@
+# Python dependencies for the VTK -> OBJ conversion step (convert_objs_parallel.py).
+#
+# numpy is already provided by `module load anaconda/2024.02-py311`.
+# meshio is NOT in that module, so it is pinned here. Without it `make_objs.sh` /
+# `submit_convert_objs_shared.sh` die with `ModuleNotFoundError: No module named 'meshio'`.
+#
+# Install once, on Anvil:
+#     module load anaconda/2024.02-py311
+#     pip install --user -r requirements.txt
+# (The convert scripts also auto-run this if meshio is missing, so a fresh clone just works.)
+meshio==5.3.5

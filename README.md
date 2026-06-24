@@ -11,8 +11,12 @@ in `config.sh` (see the `LOCKED LOOK` header in `plot_single.py` if you ever nee
 ## Requirements
 
 - **Blender 5.0** (CPU Cycles)
-- **Python 3** with `numpy`, `meshio`
+- **Python 3** with `numpy` (from `module load anaconda/2024.02-py311`) and **`meshio`** (`requirements.txt`)
 - `.vtk` strain frames from the GW pipeline (`gravity_wave_generation/VTKdata/2D/hplus_*.vtk`)
+
+> **`meshio` is not in the Anvil anaconda module.** `make_objs.sh` / `submit_convert_objs_shared.sh`
+> auto-install it into your user site on first run, so a fresh clone just works. To install it
+> yourself up front: `module load anaconda/2024.02-py311 && pip install --user -r requirements.txt`.
 
 ## Setup
 
@@ -28,28 +32,38 @@ export STRIDE=2                          # even frames 0,2,4,... to match densit
 
 ## Run
 
+**Step 1 — VTK → OBJ** (once per dataset; resumable):
 ```sh
-./make_objs.sh        # VTK -> OBJ  (obj_data/hplus_*.obj)
-./render_meshes.sh    # OBJ -> PNG  (render_mesh/hplus_*.obj.png), locked look
+./make_objs.sh                            # local, parallel
+sbatch submit_convert_objs_shared.sh      # or as a cluster job (edit #SBATCH account/partition)
 ```
-Both are resumable (skip already-produced files). On a cluster, run them as batch jobs instead
-of on the login node (edit the `#SBATCH` account/partition):
-```sh
-sbatch submit_convert_objs_shared.sh      # VTK -> OBJ
-sbatch submit_render_array_shared.sh      # full render (48 array tasks)
-```
+
+**Step 2 — OBJ → PNG.** Every render path drives the *same* renderer (`plot_single.py`, the locked
+look) through `render_node.sh` — they differ only in **where** it runs and **how the output is
+organized**. Pick one by scale:
+
+| command | use for | runs on | frames land in |
+|---------|---------|---------|----------------|
+| `./render_meshes.sh` | a quick test / a few frames / look-tuning | this machine (one node) | `RENDER_DIR` (default `render_mesh/`) |
+| `sbatch submit_render_array_shared.sh` | a full render into a plain dir | SLURM, 48 array tasks | `RENDER_DIR` |
+| `./run_movie.sh <name> [--disk]` | **a full movie (recommended)** | SLURM (wraps the array) | `MOVIES/<ts>_<name>/frames/` |
+
+`run_movie.sh` is **not a different renderer** — it is the production wrapper around
+`submit_render_array_shared.sh`: it stamps a timestamped `MOVIES/` run dir, records the settings, and
+(with `--disk`) turns on in-render disk compositing. All paths are resumable (skip already-produced
+PNGs). See **Movie runs** for the `run_movie.sh` details and **Compositing the disk** for the switch.
 
 ## Outputs
 
 | step | script | output |
 |------|--------|--------|
 | VTK → OBJ | `convert_objs_parallel.py` (via `make_objs.sh`) | `obj_data/hplus_NNNNNN.obj` |
-| OBJ → render | `plot_single.py` (via `render_meshes.sh`) | `render_mesh/hplus_NNNNNN.obj.png` (1920×1080) |
+| OBJ → render | `plot_single.py` (via `render_meshes.sh` / `submit_render_array_shared.sh` / `run_movie.sh`) | `hplus_NNNNNN.obj.png` (1920×1080) in `RENDER_DIR` or `MOVIES/<run>/frames/` |
 
 ## Movie runs (`MOVIES/`)
 
-Each full render goes into its own **timestamped** directory under `MOVIES/` (gitignored), so runs
-don't pile up loose in the repo root. Launch one with:
+`run_movie.sh` (the recommended full-movie path above) puts each render into its own **timestamped**
+directory under `MOVIES/` (gitignored), so runs don't pile up loose in the repo root. Launch one with:
 
 ```sh
 # mesh-only:
@@ -77,11 +91,23 @@ index and simulation time stay recoverable. Skip it if your tool reads the gappy
 
 ## Compositing the disk into the hole
 
-`plot_single.py` can drop an accretion-disk render into the central hole via the `with_density`
-flag (the 12th positional render arg; `render_meshes.sh` passes `0` = off). Set it to `1` to lay
-the disk *image* on a flat plane in the orbital plane (true scale, foreshortened by the grazing
-camera). Point the image at your disk render — `plot_single.py:222` `image_path` (currently a
-single hardcoded test frame; build the path per-frame for a movie).
+The accretion-disk overlay is an **in-render switch**, driven by two environment variables that
+`render_one.sh` reads per frame:
+
+```sh
+WITH_DENSITY=1   DISK_MANIFEST=/path/to/disk_manifest.txt
+```
+
+`run_movie.sh --disk` sets both for you (pointing at `disk_manifest.txt` in the repo root); any render
+path honors them if you export them yourself (e.g. before `./render_meshes.sh`). For each frame,
+`render_one.sh` looks up that frame's disk image in the manifest (lines `<6-digit frame>  <disk png>`)
+and `plot_single.py` lays it on a **camera-facing billboard at the disk's depth** — so the z-buffer
+interleaves it with the waves (foreground crests occlude the disk; the disk occludes troughs behind).
+Frames with no manifest entry render mesh-only. With the variables unset (the default — e.g. plain
+`render_meshes.sh`), the disk is off and the render is mesh-only.
+
+The disk images come from a separate disk-render pipeline; `disk_manifest.txt` is workspace-local
+(absolute paths) and gitignored, so build your own to point `--disk` at your frames.
 
 ## Notes
 
@@ -98,4 +124,3 @@ single hardcoded test frame; build the path per-frame for a movie).
 - `legacy/` holds the tuning/diagnostic one-offs (camera/view dumpers, single-file converters,
   the disk-composite and green-screen movie tools, old drivers). Not needed for the clean path.
 - Generated data (`obj_data*/`, `render_*/`, `frames_*/`, logs) is gitignored; clone ships source.
-- Downstream disk-density compositing onto the hole is a separate movie step (in `legacy/`).
