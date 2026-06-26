@@ -54,6 +54,23 @@ CAP="${CAP:-$A}"
 # --- disk switch -> the name render_one.sh reads ---
 WD=$([[ "$WITH_DISK" == "1" ]] && echo 1 || echo 0)
 
+# --- disk pre-flight: don't silently produce a diskless movie you asked to have a disk ---
+if (( WD == 1 )); then
+  if [[ ! -f "$DISK_MANIFEST" ]]; then
+    echo "[ERROR] WITH_DISK=1 but DISK_MANIFEST not found:" >&2
+    echo "        $DISK_MANIFEST" >&2
+    echo "        build it once:   python3 build_disk_manifest.py \"\$DISK_FOLDER\" \"\$DISK_MANIFEST\"" >&2
+    echo "        or render mesh-only:   WITH_DISK=0 ./submit_render.sh ${NAME:-<run-name>}" >&2
+    exit 1
+  fi
+  miss=$(awk 'NR==FNR{have[$1]=1; next} !($1 in have){c++} END{print c+0}' "$DISK_MANIFEST" "$LIST")
+  if (( miss > 0 )); then
+    echo "[warn] $miss of $N selected frames have NO disk entry in $(basename "$DISK_MANIFEST")"
+    echo "       -> those frames will render MESH-ONLY. Expected for the waveless tail / frames beyond the"
+    echo "          disk data. If unexpected, check STRIDE matches the manifest, or rebuild the manifest."
+  fi
+fi
+
 echo "FRAMES='$FRAMES' -> $N frames | array 0-$((A-1))%$CAP | WITH_DISK=$WD HOLE_RADIUS=$HOLE_RADIUS SAMPLES=$SAMPLES"
 echo "OBJ_DIR   = $OBJ_DIR"
 echo "RENDER_DIR= $RENDER_DIR"

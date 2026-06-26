@@ -87,6 +87,62 @@ true frame# and t/M):
 ./relabel_continuous.sh MOVIES/<run>/frames     # -> frame_000000.png, frame_000001.png, ...
 ```
 
+## Examples
+
+```sh
+# --- quick tests (array auto-sizes to the # of frames) ---
+FRAMES="0 5000" ./submit_render.sh test            # 2-frame smoke test, current look -> 2-task array
+WITH_DISK=0 FRAMES="0 5000" ./submit_render.sh meshtest   # same frames, mesh-only
+FRAMES="0-200" ./submit_render.sh rangetest        # strided range 0,2,4,...,200
+FRAMES="0-8000:50" ./submit_render.sh coarse       # every 50th frame, a fast whole-movie preview
+
+# --- look tuning (override a knob on a few frames) ---
+HOLE_RADIUS=12 FRAMES="5000" ./submit_render.sh hole12     # try a different hole size
+ZSCALE=1.0 FRAMES="2000 4000 6000" ./submit_render.sh zs   # bigger wave height
+SAMPLES=32 FRAMES="0 5000" ./submit_render.sh fastlook     # cheap/noisy preview
+for r in 10 12 15 18; do HOLE_RADIUS=$r FRAMES=5000 ./submit_render.sh hole_$r; done  # sweep
+
+# --- production ---
+./submit_render.sh fullmovie                       # whole movie, current settings (48 tasks)
+WITH_DISK=0 ./submit_render.sh meshonly            # whole movie, mesh-only
+SAMPLES=256 ./submit_render.sh fullmovie_hq        # higher quality
+CAP=10 ./submit_render.sh fullmovie                # 48 tasks queued, only 10 active at once
+
+# --- different data ---
+OBJ_DIR=$PWD/obj_data ./submit_render.sh from_objdata
+python3 build_disk_manifest.py /path/to/new_disk_pngs $PWD/new_manifest.txt
+DISK_MANIFEST=$PWD/new_manifest.txt ./submit_render.sh newdisk
+
+# --- cold start, end to end ---
+sbatch submit_convert_objs_shared.sh                            # 1. VTK -> OBJ
+module load anaconda/2024.02-py311
+python3 build_disk_manifest.py "$DISK_FOLDER" "$DISK_MANIFEST"  # 2. disk manifest (once)
+./submit_render.sh fullmovie                                    # 3. render
+./relabel_continuous.sh MOVIES/<ts>_fullmovie/frames           # 4. relabel (after it finishes)
+```
+
+If you specify no flags, every knob falls back to its **`config.sh`** default (disk ON, hole 15,
+samples 128, etc.). `plot_single.py`'s bare defaults are kept in sync with `config.sh`, so the look
+is identical however the renderer is invoked.
+
+## Pitfalls & fixes
+
+- **Disk needs its manifest.** With `WITH_DISK=1`, the launcher *errors out* if `DISK_MANIFEST`
+  doesn't exist (build it, or pass `WITH_DISK=0`), and *warns* if some selected frames have no entry
+  (those render mesh-only). It will not silently hand you a diskless movie you asked to have a disk.
+- **Keep `STRIDE` consistent with the manifest.** The manifest maps `frame = STRIDE×index`. Building
+  it at `STRIDE=2` then rendering at `STRIDE=1` makes the odd frames fall outside the manifest →
+  they render mesh-only (you'll see the warning above). Use `STRIDE=1` for *mesh-only* fine renders,
+  or rebuild the manifest at the STRIDE you render.
+- **Disk frames must sort chronologically.** `build_disk_manifest.py` pairs frames by
+  `sorted(*.png)`, so filenames must be **zero-padded** (e.g. `..._007_003_...`, not `..._7_3_...`)
+  or the disk gets paired to the wrong frame. Check the `first/last` lines the builder prints.
+- **Resuming a full run.** A run-name makes a *new* timestamped dir each launch, so re-running
+  `./submit_render.sh fullmovie` starts fresh. To resume an interrupted run, re-target the same dir
+  instead: `RENDER_DIR=$PWD/MOVIES/<ts>_fullmovie/frames ./submit_render.sh` (no run-name).
+- **Use `obj_data_zoom200`, not `obj_data`.** The locked camera (`_DOLLY_DIST=250`) needs the wider
+  ±200 M_sun mesh; the smaller `obj_data` set leaves the frame corners uncovered.
+
 ## Notes
 
 - **Trim the flat tail.** The mesh is rendered over the *full* simulation time, so after the last

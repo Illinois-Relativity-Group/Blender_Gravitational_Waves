@@ -65,7 +65,7 @@ bpy.context.scene.world.node_tree.nodes["Background"].inputs[0].default_value = 
 # Set thread mode to 'FIXED'
 bpy.context.scene.cycles.device = 'CPU'
 bpy.context.scene.render.threads_mode = 'FIXED'
-bpy.context.scene.render.threads = int(os.environ.get("BLENDER_THREADS", "20"))  # env-driven for on-node concurrency (movie farm packs ~10 procs x 12 threads/node); default 20 unchanged
+bpy.context.scene.render.threads = int(os.environ.get("BLENDER_THREADS", "12"))  # env knob BLENDER_THREADS, default 12 = matches config.sh (the array job packs 2 procs x 12 threads/24-core task)
 
 #dark dark blue(0.006, 0.006, 0.051, 1)
 #dark blue(0.129, 0.2, 0.271, 1)
@@ -117,7 +117,7 @@ obj = bpy.data.objects["wave"]
 
 
 #------Boolean------#
-bpy.ops.mesh.primitive_cylinder_add(radius=float(os.environ.get("HOLE_RADIUS", "10")), depth=1000, location=(0, 0, 0))  # central cutout (M_sun); LOCKED default 10, env-overridable HOLE_RADIUS (e.g. 15 = 50% larger). The 7 M_sun disk seats inside with margin.
+bpy.ops.mesh.primitive_cylinder_add(radius=float(os.environ.get("HOLE_RADIUS", "15")), depth=1000, location=(0, 0, 0))  # central cutout (M_sun); env knob HOLE_RADIUS, default 15 = matches config.sh (single source of truth). The 7 M_sun disk seats inside with margin.
 cylinder = bpy.context.active_object
 cylinder.name = "Boolean_Cylinder"
 cylinder.rotation_euler[0] = math.radians(90)
