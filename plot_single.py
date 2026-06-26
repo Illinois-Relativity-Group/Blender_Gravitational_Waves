@@ -1,9 +1,9 @@
 # ============================================================================
-#  LOCKED LOOK -- the dialed-in mesh view. Change these only to RE-tune the view;
-#  they are intentionally not exposed in config.sh so the reproduction stays fixed.
-#    samples            = 64        (line ~42)
-#    ZSCALE             = obj.scale.z *= 0.7     (line ~106; wave height; env-overridable)
-#    central hole       = cylinder radius 10     (line ~110)
+#  LOCKED LOOK -- the dialed-in mesh view. The camera + grid-shader scale below stay LOCKED here
+#  so the reproduction is fixed; the rest (samples/ZSCALE/hole/margin) are exposed as config.sh knobs.
+#    samples            = SAMPLES env, default 128   (line ~52; config.sh)
+#    ZSCALE             = obj.scale.z *= ZSCALE (default 0.7)  (line ~106; wave height; config.sh)
+#    central hole       = cylinder radius HOLE_RADIUS (default 15)  (line ~120; config.sh)
 #    camera _DOLLY_DIST = 250.0     (line ~170)   ELEV_DEG = 37.4   lens = 50mm
 #    shader brick Scale = 0.0625    (shader_grid_solidlightblue.py; tracks 0.02*781.8/dist)
 #  Paths/frames come from config.sh via the CLI args this script is called with.
@@ -49,7 +49,7 @@ bpy.ops.object.delete(use_global=False)
 
 #-----------------------Setting for Faster Rendering---------------------------#
 bpy.context.scene.render.use_simplify = True
-bpy.context.scene.cycles.samples = 64 # TEST: 64 for fast 15x balance-inspection loop; RESTORE to 128 for production
+bpy.context.scene.cycles.samples = int(os.environ.get("SAMPLES", "128")) # env knob SAMPLES (config.sh); default 128
 # Set scene camera and rendering engine
 
 bpy.context.scene.render.engine = 'CYCLES'
@@ -117,7 +117,7 @@ obj = bpy.data.objects["wave"]
 
 
 #------Boolean------#
-bpy.ops.mesh.primitive_cylinder_add(radius=10, depth=1000, location=(0, 0, 0))  # 10 M_sun central cutout; the 7 M_sun disk seats inside with a ~3 M_sun ring of margin
+bpy.ops.mesh.primitive_cylinder_add(radius=float(os.environ.get("HOLE_RADIUS", "10")), depth=1000, location=(0, 0, 0))  # central cutout (M_sun); LOCKED default 10, env-overridable HOLE_RADIUS (e.g. 15 = 50% larger). The 7 M_sun disk seats inside with margin.
 cylinder = bpy.context.active_object
 cylinder.name = "Boolean_Cylinder"
 cylinder.rotation_euler[0] = math.radians(90)
@@ -213,21 +213,30 @@ if with_density == "1":
     # view: parallelScale 50.625 == this render's half-height in M_sun at _DOLLY_DIST). They are
     # therefore ALREADY foreshortened to the camera, so we must NOT lay them flat in the orbital
     # plane (that would foreshorten a second time -> squashed disk). Instead we billboard the frame
-    # facing the camera, centered on the optical axis at the ORIGIN's depth, sized to fill the render
-    # 1:1 (the same full-frame overlay the 2D composite used) -- but now as a real plane at depth, so
-    # the z-buffer interleaves it with the waves: foreground crests occlude the disk, and the disk
-    # occludes troughs behind it. The transparent (alpha-0) background shows the waves/white-plane.
+    # facing the camera, centered on the optical axis, sized to fill the render 1:1 (the same
+    # full-frame overlay the 2D composite used). By default it sits at the origin's depth (in-plane),
+    # so the z-buffer interleaves it with the waves -- the disk seats in the plane. Set DISK_MARGIN>0
+    # to LIFT it toward the camera so the central waves no longer cut it (it then floats above the
+    # plane). The transparent (alpha-0) background shows the waves/white-plane.
     # Per-frame disk image comes from DISK_IMAGE (the driver sets it); falls back to the test card.
     image_path = os.environ.get("DISK_IMAGE",
         "/anvil/scratch/x-yguo11/blender_gw_dev/density_movies/disk_card_0010.png")
-    _Dorig = _DOLLY_DIST                                                # origin sits on-axis at the camera distance
+    # DISK_MARGIN (M_sun) lifts the billboard toward the camera. Default 0 = at the origin's depth
+    # (in-plane; z-buffer interleaves with the waves -- the original placement). >0 floats it in front
+    # of the central waves so they don't cut it. Centered on the optical axis + rescaled, so the
+    # on-screen position/size stay pixel-identical regardless of margin.
+    _margin  = float(os.environ.get("DISK_MARGIN", "0"))                # M_sun lifted toward the camera (0 = in-plane)
+    _to_cam  = camera_used.location.normalized()                        # origin->camera unit dir (origin at 0)
+    _Dorig   = _DOLLY_DIST - _margin                                    # billboard depth (closer than the origin)
+    _loc     = _to_cam * _margin                                        # origin shifted toward the camera
     _hw = _Dorig * (camera_data.sensor_width / 2.0) / camera_data.lens  # render half-width (M_sun) at that depth
     _rh = bpy.context.scene.render.resolution_y / bpy.context.scene.render.resolution_x
-    bpy.ops.mesh.primitive_plane_add(size=2, enter_editmode=False, location=(0, 0, 0))
+    bpy.ops.mesh.primitive_plane_add(size=2, enter_editmode=False, location=_loc)
     plane = bpy.context.active_object
     plane.name = "disk_billboard"
     plane.rotation_euler = camera_used.rotation_euler                  # face the camera, upright (no roll)
-    plane.scale = (_hw, _hw * _rh, 1.0)                                # fill the frame 1:1 at depth _Dorig
+    _dscale = float(os.environ.get("DISK_SCALE", "1.0"))              # per-frame gauge-shrink size normalization (manifest col 3)
+    plane.scale = (_hw * _dscale, _hw * _rh * _dscale, 1.0)           # fill frame 1:1 at depth, x DISK_SCALE -> hold constant apparent size
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     plane.visible_shadow = False                                      # don't cast the disk card's shadow on the waves
     plane_mat = nsns_node_group(image_path)

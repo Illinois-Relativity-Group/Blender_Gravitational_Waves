@@ -1,11 +1,13 @@
 #!/bin/bash
 # ============================================================================
-#  USER CONFIG for the Blender GW-mesh pipeline.
-#  Edit the paths for your setup, then:   ./make_objs.sh   &&   ./render_meshes.sh
+#  USER CONFIG for the Blender GW-mesh pipeline.  Edit this file, then:
+#      sbatch submit_convert_objs_shared.sh      # step 1: VTK -> OBJ
+#      ./submit_render.sh <run-name>             # step 2: OBJ -> PNG (one launcher)
 #
-#  NOTE: the mesh LOOK -- camera angle/distance, ZSCALE, the central hole, the
-#  shader -- is intentionally LOCKED in plot_single.py + shader_grid_solidlightblue.py
-#  so the dialed-in view reproduces exactly. It is NOT exposed here.
+#  The fixed part of the LOOK -- camera angle/distance/lens and the grid-shader
+#  scale -- is LOCKED in plot_single.py + shader_grid_solidlightblue.py so the
+#  dialed-in view reproduces exactly. The knobs people actually change -- WHAT
+#  frames, disk on/off, hole size, wave height, samples -- live HERE.
 # ============================================================================
 
 export GW_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -14,25 +16,36 @@ export GW_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export BLENDER=/anvil/scratch/x-yguo11/software/blender-5.0.0-linux-x64/blender   # Blender 5.0 binary
 
 # --- paths ---
-export VTK_DIR=/anvil/scratch/x-yguo11/abid_bot_dev/gravity_wave_generation/VTKdata/2D  # input .vtk (from the GW pipeline)
-export OBJ_DIR="${OBJ_DIR:-$GW_ROOT/obj_data}"          # OBJ output (make_objs.sh); env-overridable
-export RENDER_DIR="${RENDER_DIR:-$GW_ROOT/render_mesh}" # rendered frames output; env-overridable
+export VTK_DIR=/anvil/scratch/x-yguo11/abid_bot_dev/gravity_wave_generation/VTKdata/2D  # input .vtk (step 1 input)
+export OBJ_DIR="${OBJ_DIR:-$GW_ROOT/obj_data_zoom200}"  # OBJ set (step 1 output / step 2 input); env-overridable
+export RENDER_DIR="${RENDER_DIR:-$GW_ROOT/render_mesh}" # default output (a run-name overrides this); env-overridable
 
 # --- mesh grid (MUST match the GW pipeline's XY_MAX_2D / XY_NUM_2D) ---
 export XY_MAX=200                            # mesh half-width (M_sun)
 export NDIM=500                              # grid points per side
-export CUT_RADIUS=1.0                        # tiny inner OBJ cut; the visible 10 M_sun hole is cut in Blender
+export CUT_RADIUS=1.0                        # tiny inner OBJ cut (kills the 1/r spike); the VISIBLE hole is cut in Blender (HOLE_RADIUS)
 
-# --- movie ---
-# Frame cadence. STRIDE=2 (default) renders the EVEN frames 0,2,4,... -> half the count, which
-# matches the density render and the 1D overlay plots (both step 2 sim-frames per frame).
-# STRIDE=1 = every frame. (STRIDE strides the frame *list*; that equals even frame *numbers*
-# only because the frames are consecutive -- true for this pipeline's output.)
-export STRIDE=2                              # even frames (0,2,4,...) to match density / 1D cadence
-export NCONC=10                              # concurrent Blender procs per node (render)
-export BLENDER_THREADS=12                    # cpu threads per Blender proc
+# --- step 2: WHAT to render --------------------------------------------------
+# FRAMES picks the frames (space- or comma-separated, mixable):
+#   all          every frame in OBJ_DIR at STRIDE cadence  (the full movie)
+#   "0 5000"     just those frame numbers                  (a quick test)
+#   "0-200"      a range; step defaults to STRIDE
+#   "0-200:10"   a range with an explicit step
+export FRAMES="${FRAMES:-all}"
+export STRIDE="${STRIDE:-2}"                 # cadence for `all` / bare ranges: 2 = even frames (matches disk & 1D), 1 = every frame
+export MAX_TASKS="${MAX_TASKS:-48}"          # SLURM array cap; the array auto-sizes to min(#frames, MAX_TASKS)
+export NCONC="${NCONC:-10}"                  # concurrent Blender procs per task (the array job overrides to 2)
+export BLENDER_THREADS="${BLENDER_THREADS:-12}"  # cpu threads per Blender proc
+
+# --- step 2: the DISK overlay + look knobs (defaults = current production look) ---
+export WITH_DISK="${WITH_DISK:-1}"          # 1 = composite the accretion disk in-render, 0 = mesh-only
+export DISK_FOLDER="${DISK_FOLDER:-$GW_ROOT/density_test/full_density_movie_newopa}"  # disk PNGs (build_disk_manifest.py input)
+export DISK_MANIFEST="${DISK_MANIFEST:-$GW_ROOT/disk_manifest_newopa.txt}"            # built manifest (the renderer reads this)
+export HOLE_RADIUS="${HOLE_RADIUS:-15}"     # central cutout radius (M_sun); current look = 15 (was 10)
+export ZSCALE="${ZSCALE:-0.7}"              # wave-height multiplier
+export DISK_MARGIN="${DISK_MARGIN:-0}"      # M_sun lift of the disk billboard toward the camera (0 = in-plane)
+export SAMPLES="${SAMPLES:-128}"            # Cycles render samples (quality vs speed)
 
 # NOTE: frames are rendered over the FULL simulation (coordinate) time, so once the last GW has
 # passed the extraction radius the TRAILING frames go flat (no waves). The mesh sequence therefore
-# outlasts the 1D-overlay sequence -- in your Blender/video editor you can trim the waveless tail
-# frames to match the overlay length.
+# outlasts the 1D-overlay sequence -- trim the waveless tail in your editor to match the overlay.
