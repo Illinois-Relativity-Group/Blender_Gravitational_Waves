@@ -4,10 +4,12 @@
 #      sbatch submit_convert_objs_shared.sh      # step 1: VTK -> OBJ
 #      ./submit_render.sh <run-name>             # step 2: OBJ -> PNG (one launcher)
 #
-#  The fixed part of the LOOK -- camera angle/distance/lens and the grid-shader
-#  scale -- is LOCKED in plot_single.py + shader_grid_solidlightblue.py so the
-#  dialed-in view reproduces exactly. The knobs people actually change -- WHAT
-#  frames, disk on/off, hole size, wave height, samples -- live HERE.
+#  The fixed part of the LOOK -- the camera (azimuth/elevation, dolly distance
+#  DOLLY_DIST=125 in for the 2x magnification, wide 50mm lens) -- is LOCKED in
+#  plot_single.py so the dialed-in converging view reproduces exactly; the disk
+#  billboard, time label and grid shader all auto-track it. The knobs people
+#  actually change -- WHAT frames, disk on/off, hole size, wave height, samples
+#  -- live HERE.
 # ============================================================================
 
 export GW_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -39,9 +41,9 @@ export BLENDER_THREADS="${BLENDER_THREADS:-12}"  # cpu threads per Blender proc
 
 # --- step 2: the DISK overlay + look knobs (defaults = current production look) ---
 export WITH_DISK="${WITH_DISK:-1}"          # 1 = composite the accretion disk in-render, 0 = mesh-only
-export DISK_FOLDER="${DISK_FOLDER:-$GW_ROOT/density_test/full_density_movie_newopa}"  # disk PNGs (build_disk_manifest.py input)
+export DISK_FOLDER="${DISK_FOLDER:-$GW_ROOT/density_test/full_density_movie_newopa}"  # disk PNGs (build_disk_manifest.py input); MUST be the imageZoom=2 (meshmatch) render set
 export DISK_MANIFEST="${DISK_MANIFEST:-$GW_ROOT/disk_manifest_newopa.txt}"            # built manifest (the renderer reads this)
-export HOLE_RADIUS="${HOLE_RADIUS:-15}"     # central cutout radius (M_sun); current look = 15 (was 10)
+export HOLE_RADIUS="${HOLE_RADIUS:-7.5}"    # central cutout radius (PHYSICAL M_sun); current look = 7.5 (was 15; halved so disk & mesh share one ruler and the hole frames the ~7 M_sun disk)
 export ZSCALE="${ZSCALE:-0.7}"              # wave-height multiplier
 export DISK_MARGIN="${DISK_MARGIN:-0}"      # M_sun lift of the disk billboard toward the camera (0 = in-plane)
 export SAMPLES="${SAMPLES:-128}"            # Cycles render samples (quality vs speed)

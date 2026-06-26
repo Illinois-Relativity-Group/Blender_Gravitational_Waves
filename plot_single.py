@@ -1,11 +1,14 @@
 # ============================================================================
-#  LOCKED LOOK -- the dialed-in mesh view. The camera + grid-shader scale below stay LOCKED here
-#  so the reproduction is fixed; the rest (samples/ZSCALE/hole/margin) are exposed as config.sh knobs.
+#  LOCKED LOOK -- the dialed-in mesh view. The camera (AZIMUTH/ELEVATION, DOLLY_DIST, lens) stays LOCKED
+#  here so the reproduction is fixed; the rest (samples/ZSCALE/hole/margin) are exposed as config.sh knobs.
 #    samples            = SAMPLES env, default 128   (line ~52; config.sh)
 #    ZSCALE             = obj.scale.z *= ZSCALE (default 0.7)  (line ~106; wave height; config.sh)
-#    central hole       = cylinder radius HOLE_RADIUS (default 15)  (line ~120; config.sh)
-#    camera _DOLLY_DIST = 250.0     (line ~170)   ELEV_DEG = 37.4   lens = 50mm
-#    shader brick Scale = 0.0625    (shader_grid_solidlightblue.py; tracks 0.02*781.8/dist)
+#    central hole       = cylinder radius HOLE_RADIUS (default 7.5, physical M_sun)  (line ~120; config.sh)
+#    camera DOLLY_DIST  = 125 (dollied IN for 2x magnification)  ELEV_DEG = 37.4  lens = 50mm*ZOOM (ZOOM=1)
+#    why dolly not zoom = 2x via dollying-in keeps the WIDE 50mm converging perspective; a telephoto (ZOOM>1)
+#                         would give the same magnification but FLATTEN the perspective. DOLLY_DIST & ZOOM are
+#                         env-overridable but locked by default. The disk billboard (_hw), time label, and grid
+#                         brick Scale (=0.02*781.8/DOLLY_DIST*ZOOM) ALL auto-track them -> one consistent ruler.
 #  Paths/frames come from config.sh via the CLI args this script is called with.
 # ============================================================================
 import bpy
@@ -50,6 +53,8 @@ bpy.ops.object.delete(use_global=False)
 #-----------------------Setting for Faster Rendering---------------------------#
 bpy.context.scene.render.use_simplify = True
 bpy.context.scene.cycles.samples = int(os.environ.get("SAMPLES", "128")) # env knob SAMPLES (config.sh); default 128
+ZOOM = float(os.environ.get("ZOOM", "1.0"))  # LOCKED look: lens = 50mm*ZOOM, default ZOOM=1 -> wide 50mm (converging perspective). env-overridable. ZOOM>1 = telephoto (flattens perspective) -- not used; the 2x magnification is done by dollying instead (DOLLY_DIST). Read EARLY (grid shader/lens/billboard/label all use it).
+_DOLLY_DIST = float(os.environ.get("DOLLY_DIST", "125"))  # LOCKED look: camera distance, default 125 = dollied in for 2x magnification while the wide 50mm lens KEEPS the converging perspective (vs telephoto, which flattens). env-overridable. Read EARLY for the grid shader.
 # Set scene camera and rendering engine
 
 bpy.context.scene.render.engine = 'CYCLES'
@@ -117,7 +122,7 @@ obj = bpy.data.objects["wave"]
 
 
 #------Boolean------#
-bpy.ops.mesh.primitive_cylinder_add(radius=float(os.environ.get("HOLE_RADIUS", "15")), depth=1000, location=(0, 0, 0))  # central cutout (M_sun); env knob HOLE_RADIUS, default 15 = matches config.sh (single source of truth). The 7 M_sun disk seats inside with margin.
+bpy.ops.mesh.primitive_cylinder_add(radius=float(os.environ.get("HOLE_RADIUS", "7.5")), depth=1000, location=(0, 0, 0))  # central cutout (PHYSICAL M_sun, independent of ZOOM); env knob HOLE_RADIUS, default 7.5 = matches config.sh. The ~7 M_sun disk seats inside with margin.
 cylinder = bpy.context.active_object
 cylinder.name = "Boolean_Cylinder"
 cylinder.rotation_euler[0] = math.radians(90)
@@ -140,7 +145,7 @@ subdivide_modifier.render_levels = 1  # Render levels
 # Append the material from your shader grid node group
 if plot_mem == "0":
     #The shader for no memory
-    shader_wb_material = shader_twoblue_3()
+    shader_wb_material = shader_twoblue_3(grid_scale=0.02*781.8/_DOLLY_DIST*ZOOM)   # cell scale ~ magnification = (250/_DOLLY_DIST)*ZOOM. Physical cell halves as the mesh is magnified 2x (8.7->4.6 M_sun), so on-screen grid density stays the same AND the cell M_sun stays consistent with the faithfully-placed disk -> one uniform ruler. Tracks BOTH dolly and lens zoom; =0.125 at the default dist250/ZOOM2 and at dist125/ZOOM1.
     #shader_wb_material = two_color_blue_red_node_group()
     obj.data.materials.append(shader_wb_material)
 elif plot_mem == "1":
@@ -177,7 +182,7 @@ bpy.context.collection.objects.link(camera_used)
 # Disk/orbital plane normal in Blender world = (0,-1,0). Keep the artist camera's azimuth + distance
 # (orig pos (600,-475,-160), dist 781.79, elev 37.4 deg); change ONLY the elevation angle above the plane.
 _az_xz   = mathutils.Vector((600.0, -160.0)); _az_xz.normalize()   # in-plane (x,z) direction
-_DOLLY_DIST = 250.0                                               # DOLLY distance (orig 781.79). Closer = bigger hole: d=250 -> visible ±90 M_sun, the 10 M_sun hole reads ~11% of frame width (~33% smaller than d=170). Wide 50mm lens (perspective kept). Shader brick Scale MUST track: S = 0.02*781.8/_DOLLY_DIST (0.0625 at d=250). Needs the wider ±200 M_sun mesh (obj_data, built at XY_MAX=200) so far corners stay covered.
+# _DOLLY_DIST is read once near the top (env knob DOLLY_DIST, default 250). Dollying CLOSER magnifies the mesh while the wide 50mm lens KEEPS the converging perspective (unlike telephoto/ZOOM, which flattens it). Needs the wider ±200 M_sun mesh (obj_data, XY_MAX=200) so far corners stay covered.
 ELEV_DEG = 37.4                                                   # artist/reference grazing angle. LOWER = more grazing/receding plane; HIGHER = more top-down.
 _el      = ELEV_DEG * np.pi/180.0
 _horiz   = _DOLLY_DIST * np.cos(_el); _height = _DOLLY_DIST * np.sin(_el)
@@ -185,19 +190,22 @@ camera_used.location = (_horiz*_az_xz.x, -_height, _horiz*_az_xz.y)  # y<0 = abo
 camera_used.rotation_euler = (296*np.pi/180, -108.19*np.pi/180, -153.6*np.pi/180) #(295.2*np.pi/180, -107.94*np.pi/180, -152.05*np.pi/180)
 camera_data.clip_end = 10000.0
 
-# --- WIDE 50mm lens (ZOOM=1): keep wide-angle perspective (converging grid lines). We zoom in by
-# DOLLYING the camera closer (_DOLLY_DIST above), NOT by telephoto. A 15x telephoto (lens 750mm,
-# ~1.5deg FOV) is near-orthographic and KILLS the converging perspective the user wants -> abandoned.
-# First re-aim the optical axis exactly at the origin (minimal rotation -> roll preserved); the
-# re-aim auto-tracks the origin from the new closer position. Grid-shader brick Scale in
-# shader_grid_solidlightblue.py:shader_twoblue_3 MUST track magnification: S = 0.02*781.8/_DOLLY_DIST.
-ZOOM = 1.0
+# --- lens = 50mm*ZOOM (ZOOM env knob, config.sh, default 2.0 -> 100mm). ZOOM is a PURE optical
+# magnification at the FIXED camera position (_DOLLY_DIST=250), i.e. a telephoto -- this is the exact
+# analog of the VisIt disk view's imageZoom (also a pure magnification at fixed eye), so disk and mesh
+# share one scale. A MILD 2x (100mm) keeps usable converging perspective; do NOT push to a strong
+# telephoto (e.g. 15x/750mm, ~1.5deg FOV) which goes near-orthographic and KILLS the convergence.
+# (Magnify here, NOT by dollying closer: dollying changes the viewpoint and would break the match
+# with the disk, which was rendered from distance 250.) First re-aim the optical axis exactly at the
+# origin (minimal rotation -> roll preserved). The disk billboard (_hw), time label, and grid-shader
+# brick Scale all auto-track ZOOM below.
+# (ZOOM is read once near the top, with SAMPLES, so it's available to the grid shader earlier in the file.)
 _base_rot   = camera_used.rotation_euler.to_matrix()
 _fwd        = _base_rot @ mathutils.Vector((0.0, 0.0, -1.0))
 _to_origin  = (mathutils.Vector((0.0, 0.0, 0.0)) - camera_used.location).normalized()
 _realign    = _fwd.rotation_difference(_to_origin)          # minimal rotation, keeps roll
 camera_used.rotation_euler = (_realign.to_matrix() @ _base_rot).to_euler()
-camera_data.lens = 50.0 * ZOOM                              # ZOOM=1 -> wide 50 mm (perspective kept). Zoom-in is via _DOLLY_DIST, not lens.
+camera_data.lens = 50.0 * ZOOM                              # 50mm base * ZOOM (default 2.0 -> 100mm). Pure magnification at fixed _DOLLY_DIST, matching the disk's VisIt imageZoom.
 
 bpy.context.scene.camera = camera_used
 #-----------------------Add sunlight and camera---------------------------#
@@ -331,9 +339,9 @@ if "Material" not in [n.name for n in time_group.nodes]:
 _D = 100.0
 time_obj.parent = camera_used
 time_obj.matrix_parent_inverse = mathutils.Matrix.Identity(4)   # local transform == camera-space
-time_obj.location = mathutils.Vector((23.25, 15.75, -_D))       # top-right; rescaled x15 (=750/50) from the old 750mm telephoto coords (1.55,1.05) for the wide 50mm lens. At z=-_D, frame half-extents are W=_D*18/50=36 wide, H=20.25 tall -> this is 65%/78% toward the top-right corner.
+time_obj.location = mathutils.Vector((23.25/ZOOM, 15.75/ZOOM, -_D))   # top-right; coords ~ 1/lens (the old "rescaled x15=750/50" logic), so /ZOOM keeps the SAME corner as the lens magnifies. Base (23.25,15.75) is the 50mm placement (frame half-extents at z=-_D are W=_D*18/50=36, H=20.25 -> 65%/78% toward the corner); at ZOOM=2 -> (11.625,7.875), else it falls off-screen (W shrinks to 18).
 time_obj.rotation_euler = (0.0, 0.0, 0.0)                       # face the camera (text in its XY plane)
-time_obj.scale = (0.12, 0.12, 0.12)                            # ~10% of frame height (33.6*0.12/40.5); rescaled x15 from telephoto 0.008 for the 50mm lens
+time_obj.scale = (0.12/ZOOM, 0.12/ZOOM, 0.12/ZOOM)            # scale ~ 1/lens (same law as position), so /ZOOM keeps the on-screen label size constant as the lens magnifies. Base 0.12 = ~10% of frame height at 50mm (33.6*0.12/40.5); at ZOOM=2 -> 0.06.
 time_obj.visible_shadow = False
 # --------------------- Add Time bar--------------------- #
 

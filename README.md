@@ -25,7 +25,8 @@ angle/distance/lens and the grid-shader scale — stays **locked** in `plot_sing
 
 ## Setup — edit `config.sh` only
 
-The defaults reproduce the team's **current** movie (new-opacity disk, 15 M_sun hole, 128 samples):
+The defaults reproduce the team's **current** movie (new-opacity disk, 7.5 M_sun hole, 128 samples;
+camera dollied in to distance 125 for a faithful 2x-magnified, single-ruler look — see the camera note below):
 
 ```sh
 export OBJ_DIR=$GW_ROOT/obj_data            # OBJ set (the ±200 M_sun mesh the locked camera needs)
@@ -37,7 +38,7 @@ export MAX_TASKS=48                        # SLURM array cap (array auto-sizes t
 export WITH_DISK=1                         # 1 = composite disk in-render, 0 = mesh-only
 export DISK_FOLDER=...full_density_movie_newopa   # disk PNGs (input to build_disk_manifest.py)
 export DISK_MANIFEST=$GW_ROOT/disk_manifest_newopa.txt  # built manifest (the renderer reads this)
-export HOLE_RADIUS=15   export ZSCALE=0.7   export DISK_MARGIN=0   export SAMPLES=128
+export HOLE_RADIUS=7.5  export ZSCALE=0.7   export DISK_MARGIN=0   export SAMPLES=128
 ```
 
 ## Step 1 — VTK → OBJ (resumable)
@@ -122,9 +123,18 @@ python3 build_disk_manifest.py "$DISK_FOLDER" "$DISK_MANIFEST"  # 2. disk manife
 ./relabel_continuous.sh MOVIES/<ts>_fullmovie/frames           # 4. relabel (after it finishes)
 ```
 
-If you specify no flags, every knob falls back to its **`config.sh`** default (disk ON, hole 15,
+If you specify no flags, every knob falls back to its **`config.sh`** default (disk ON, hole 7.5,
 samples 128, etc.). `plot_single.py`'s bare defaults are kept in sync with `config.sh`, so the look
 is identical however the renderer is invoked.
+
+**Camera (locked in `plot_single.py`, not a `config.sh` knob).** The view is dollied in to
+`DOLLY_DIST=125` with the wide `50 mm` lens (`ZOOM=1`). That gives a 2x magnification — so the
+accretion disk (VisIt-rendered at `imageZoom=2`) sits at its *true* physical size on the mesh and
+**one ruler measures both the grid and the disk** (the disk no longer reads 2x too big). The 2x is
+done by *dollying in*, not telephoto, so the converging-grid perspective is preserved; a telephoto
+(`ZOOM>1`) gives the same magnification but flattens the perspective. The disk billboard, time label,
+and grid cell size all auto-track `DOLLY_DIST`/`ZOOM`, so the scale stays consistent. Both are
+env-overridable for experiments but locked by default.
 
 ## Pitfalls & fixes
 
@@ -141,9 +151,9 @@ is identical however the renderer is invoked.
 - **Resuming a full run.** A run-name makes a *new* timestamped dir each launch, so re-running
   `./submit_render.sh fullmovie` starts fresh. To resume an interrupted run, re-target the same dir
   instead: `RENDER_DIR=$PWD/MOVIES/<ts>_fullmovie/frames ./submit_render.sh` (no run-name).
-- **The OBJ set must be the ±200 M_sun mesh** (`XY_MAX=200`). The locked camera (`_DOLLY_DIST=250`)
-  needs that extent so the frame corners stay covered; regenerating `obj_data` at a smaller `XY_MAX`
-  would leave them uncovered.
+- **The OBJ set must be the ±200 M_sun mesh** (`XY_MAX=200`). The locked camera (`DOLLY_DIST=125`,
+  wide 50 mm) needs that extent so the frame corners stay covered; regenerating `obj_data` at a
+  smaller `XY_MAX` would leave them uncovered.
 
 ## Notes
 
