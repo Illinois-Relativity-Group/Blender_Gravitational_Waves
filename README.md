@@ -27,7 +27,7 @@ angle/distance/lens and the grid-shader scale — stays **locked** in `plot_sing
 The defaults reproduce the team's **current** movie (new-opacity disk, 15 M_sun hole, 128 samples):
 
 ```sh
-export OBJ_DIR=$GW_ROOT/obj_data_zoom200    # OBJ set (the ±200 M_sun mesh the locked camera needs)
+export OBJ_DIR=$GW_ROOT/obj_data            # OBJ set (the ±200 M_sun mesh the locked camera needs)
 export STRIDE=2                             # cadence: 2 = even frames (matches disk & 1D), 1 = every frame
 
 export FRAMES=all                          # what to render: all | "0 5000" | "0-200" | "0-200:10"
@@ -109,7 +109,7 @@ SAMPLES=256 ./submit_render.sh fullmovie_hq        # higher quality
 CAP=10 ./submit_render.sh fullmovie                # 48 tasks queued, only 10 active at once
 
 # --- different data ---
-OBJ_DIR=$PWD/obj_data ./submit_render.sh from_objdata
+OBJ_DIR=/path/to/other_obj_set ./submit_render.sh altobj   # render from a different OBJ set
 python3 build_disk_manifest.py /path/to/new_disk_pngs $PWD/new_manifest.txt
 DISK_MANIFEST=$PWD/new_manifest.txt ./submit_render.sh newdisk
 
@@ -140,8 +140,9 @@ is identical however the renderer is invoked.
 - **Resuming a full run.** A run-name makes a *new* timestamped dir each launch, so re-running
   `./submit_render.sh fullmovie` starts fresh. To resume an interrupted run, re-target the same dir
   instead: `RENDER_DIR=$PWD/MOVIES/<ts>_fullmovie/frames ./submit_render.sh` (no run-name).
-- **Use `obj_data_zoom200`, not `obj_data`.** The locked camera (`_DOLLY_DIST=250`) needs the wider
-  ±200 M_sun mesh; the smaller `obj_data` set leaves the frame corners uncovered.
+- **The OBJ set must be the ±200 M_sun mesh** (`XY_MAX=200`). The locked camera (`_DOLLY_DIST=250`)
+  needs that extent so the frame corners stay covered; regenerating `obj_data` at a smaller `XY_MAX`
+  would leave them uncovered.
 
 ## Notes
 

@@ -177,7 +177,7 @@ bpy.context.collection.objects.link(camera_used)
 # Disk/orbital plane normal in Blender world = (0,-1,0). Keep the artist camera's azimuth + distance
 # (orig pos (600,-475,-160), dist 781.79, elev 37.4 deg); change ONLY the elevation angle above the plane.
 _az_xz   = mathutils.Vector((600.0, -160.0)); _az_xz.normalize()   # in-plane (x,z) direction
-_DOLLY_DIST = 250.0                                               # DOLLY distance (orig 781.79). Closer = bigger hole: d=250 -> visible ±90 M_sun, the 10 M_sun hole reads ~11% of frame width (~33% smaller than d=170). Wide 50mm lens (perspective kept). Shader brick Scale MUST track: S = 0.02*781.8/_DOLLY_DIST (0.0625 at d=250). Needs the wider ±200 M_sun mesh (obj_data_zoom200) so far corners stay covered.
+_DOLLY_DIST = 250.0                                               # DOLLY distance (orig 781.79). Closer = bigger hole: d=250 -> visible ±90 M_sun, the 10 M_sun hole reads ~11% of frame width (~33% smaller than d=170). Wide 50mm lens (perspective kept). Shader brick Scale MUST track: S = 0.02*781.8/_DOLLY_DIST (0.0625 at d=250). Needs the wider ±200 M_sun mesh (obj_data, built at XY_MAX=200) so far corners stay covered.
 ELEV_DEG = 37.4                                                   # artist/reference grazing angle. LOWER = more grazing/receding plane; HIGHER = more top-down.
 _el      = ELEV_DEG * np.pi/180.0
 _horiz   = _DOLLY_DIST * np.cos(_el); _height = _DOLLY_DIST * np.sin(_el)
