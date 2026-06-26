@@ -4,11 +4,12 @@ Renders the gravitational-wave "fabric" mesh — the dialed-in grazing view with
 black-hole/disk hole, optionally with the accretion disk composited into the hole — from the
 `.vtk` strain frames produced by the GW pipeline (`gravity_wave_generation`).
 
-**Two steps, two commands:**
+**The flow** (the disk-prep line is only needed when `WITH_DISK=1`, the default):
 
 ```sh
-sbatch submit_convert_objs_shared.sh     # 1. VTK -> OBJ   (once per dataset)
-./submit_render.sh fullmovie             # 2. OBJ -> PNG   (the one render launcher)
+sbatch submit_convert_objs_shared.sh                            # 1. VTK -> OBJ  (once per dataset)
+python3 build_disk_manifest.py "$DISK_FOLDER" "$DISK_MANIFEST"  #    disk prep   (once, if WITH_DISK=1)
+./submit_render.sh fullmovie                                    # 2. OBJ -> PNG  (the one launcher)
 ```
 
 Everything you tune lives in **`config.sh`**. The fixed part of the look — camera
@@ -77,9 +78,9 @@ WITH_DISK=0 FRAMES="0-200" ./submit_render.sh meshonly   # mesh-only, frames 0..
 
 Output: `hplus_NNNNNN.obj.png` (1920×1080).
 
-### Continuous relabeling (optional, only for STRIDE ≠ 1)
+### Continuous relabeling (optional; for any gappy names — STRIDE > 1 or a frame subset)
 
-At `STRIDE=2` the frames are `hplus_000000, 000002, …` (gaps of 2). For a gapless `0,1,2,…`
+At `STRIDE=2` the frames are `hplus_000000, 000002, …` (gaps of 2; a frame subset is gappy too). For a gapless `0,1,2,…`
 sequence, run **once after the render finishes** (renames in place, writes `mapping.txt` with the
 true frame# and t/M):
 
@@ -149,8 +150,9 @@ is identical however the renderer is invoked.
 - **Trim the flat tail.** The mesh is rendered over the *full* simulation time, so after the last
   wave leaves the grid the trailing frames go flat (no waves) — the mesh sequence outlasts the disk
   and 1D-overlay sequences. Cut the waveless tail in your editor to match.
-- **Quick local smoke test** (no queue): `./render_meshes.sh` renders the full strided set on one
-  node. For a few frames, prefer `FRAMES="0 5000" ./submit_render.sh test`.
+- **Quick test = a small `FRAMES` on the farm**, e.g. `FRAMES="0 5000" ./submit_render.sh test`
+  (auto-sizes to a 2-task array; finishes in ~a minute of compute). There is no login-node render
+  path — rendering always goes through SLURM.
 - `legacy/` holds tuning/diagnostic one-offs (camera dumpers, single-file converters, old drivers).
   Not needed for the clean path.
 - Generated data (`obj_data*/`, `render_*/`, `MOVIES/`, `frames_*/`, manifests, logs) is gitignored;
