@@ -13,8 +13,10 @@ python3 build_disk_manifest.py "$DISK_FOLDER" "$DISK_MANIFEST"  #    disk prep  
 ```
 
 Everything you tune lives in **`config.sh`**. The fixed part of the look — camera
-angle/distance/lens and the grid-shader scale — stays **locked** in `plot_single.py` +
-`shader_grid_solidlightblue.py` so the dialed-in view reproduces exactly.
+angle/distance/lens and the grid-shader scale — stays **locked** in `lib/plot_single.py` +
+`lib/shader_grid_solidlightblue.py` so the dialed-in view reproduces exactly. The top-level
+scripts are the entry points; the workers they call live in **`lib/`** (you never invoke those
+directly).
 
 ## Requirements
 
@@ -52,7 +54,7 @@ Output: `$OBJ_DIR/hplus_NNNNNN.obj` (one per frame).
 ## Disk prep — only if `WITH_DISK=1` (once per disk-frame set)
 
 Build the disk manifest from a folder of disk PNGs (sorts them, maps frame = `STRIDE`×index, and
-adds the per-frame size-normalization scale via `measure_disk_scale.py`):
+adds the per-frame size-normalization scale via `lib/measure_disk_scale.py`):
 
 ```sh
 module load anaconda/2024.02-py311
@@ -124,10 +126,10 @@ python3 build_disk_manifest.py "$DISK_FOLDER" "$DISK_MANIFEST"  # 2. disk manife
 ```
 
 If you specify no flags, every knob falls back to its **`config.sh`** default (disk ON, hole 7.5,
-samples 128, etc.). `plot_single.py`'s bare defaults are kept in sync with `config.sh`, so the look
-is identical however the renderer is invoked.
+samples 128, etc.). `lib/plot_single.py`'s bare defaults are kept in sync with `config.sh`, so the
+look is identical however the renderer is invoked.
 
-**Camera (locked in `plot_single.py`, not a `config.sh` knob).** The view is dollied in to
+**Camera (locked in `lib/plot_single.py`, not a `config.sh` knob).** The view is dollied in to
 `DOLLY_DIST=125` with the wide `50 mm` lens (`ZOOM=1`). That gives a 2x magnification — so the
 accretion disk (VisIt-rendered at `imageZoom=2`) sits at its *true* physical size on the mesh and
 **one ruler measures both the grid and the disk** (the disk no longer reads 2x too big). The 2x is
@@ -163,6 +165,10 @@ env-overridable for experiments but locked by default.
 - **Quick test = a small `FRAMES` on the farm**, e.g. `FRAMES="0 5000" ./submit_render.sh test`
   (auto-sizes to a 2-task array; finishes in ~a minute of compute). There is no login-node render
   path — rendering always goes through SLURM.
+- `lib/` holds the workers the top-level scripts call (`plot_single.py`, the shaders,
+  `render_{array_job,node,one}.sh`, `convert_objs_parallel.py`, `measure_disk_scale.py`,
+  `white_plane.blend`). You drive everything through the top-level entry points — never call these
+  directly.
 - `legacy/` holds tuning/diagnostic one-offs (camera dumpers, single-file converters, old drivers).
   Not needed for the clean path.
 - Generated data (`obj_data*/`, `render_*/`, `MOVIES/`, `frames_*/`, manifests, logs) is gitignored;

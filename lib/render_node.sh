@@ -4,7 +4,7 @@
 # Args: NODE_ID NNODES [STRIDE] [OUTDIR]
 set -u
 HERE="$(cd "$(dirname "$0")" && pwd)"
-source "$HERE/config.sh"
+source "$HERE/../config.sh"
 NODE_ID=$1; NNODES=$2; STRIDE=${3:-$STRIDE}; OUT=${4:-$RENDER_DIR}
 export BLENDER_THREADS
 mkdir -p "$OUT/logs"

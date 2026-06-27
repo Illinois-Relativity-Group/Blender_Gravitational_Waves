@@ -8,7 +8,7 @@
 # waves interleave with it; NOT a post-process overlay). Frames with no entry render mesh-only.
 # Default (no WITH_DENSITY) is mesh-only, byte-for-byte the same call as before.
 HERE="$(cd "$(dirname "$0")" && pwd)"
-source "$HERE/config.sh"
+source "$HERE/../config.sh"
 FRAME=$1; OUT=${2:-$RENDER_DIR}
 OBJ="$OBJ_DIR/hplus_${FRAME}.obj"
 PNG="$OUT/hplus_${FRAME}.obj.png"                 # Blender swaps .jpeg->.png (PNG format)
@@ -27,8 +27,8 @@ fi
 
 # plot_single.py args: filename frame# out blendfile framedir shaderdir memdir densitydir bhfile \
 #                      plot_mem with_blend with_density with_bh save zero_plane
-"$BLENDER" --background --python "$GW_ROOT/plot_single.py" -- \
-  "hplus_${FRAME}.obj" "$FRAME" "$OUT" "$GW_ROOT/white_plane.blend" "$OBJ_DIR/" "$GW_ROOT" \
+"$BLENDER" --background --python "$GW_ROOT/lib/plot_single.py" -- \
+  "hplus_${FRAME}.obj" "$FRAME" "$OUT" "$GW_ROOT/lib/white_plane.blend" "$OBJ_DIR/" "$GW_ROOT/lib" \
   "$GW_ROOT/texturemap" "$GW_ROOT/density_movies" "$GW_ROOT/bh_data/update_bh_radius.txt" \
   0 1 "$WD" 0 0 0 > "$OUT/logs/render_${FRAME}.log" 2>&1
 rc=$?

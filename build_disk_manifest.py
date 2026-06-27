@@ -32,5 +32,5 @@ print(f"[build] {len(pngs)} disk frames -> {out}  (frame = {STRIDE} * sorted_ind
 
 # reuse measure_disk_scale.py to append column 3 (per-frame gauge-shrink scale); idempotent
 here = os.path.dirname(os.path.abspath(__file__))
-subprocess.run([sys.executable, os.path.join(here, "measure_disk_scale.py"), out], check=True)
+subprocess.run([sys.executable, os.path.join(here, "lib", "measure_disk_scale.py"), out], check=True)
 print(f"[ok] manifest ready: {out}")

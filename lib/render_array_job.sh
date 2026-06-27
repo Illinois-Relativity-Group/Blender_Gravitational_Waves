@@ -18,4 +18,4 @@ export WITH_DENSITY="${WITH_DENSITY:-$WITH_DISK}"   # launcher sets WITH_DENSITY
 . ${MODULESHOME}/init/bash 2>/dev/null || true
 module load anaconda/2024.02-py311 2>/dev/null || true
 echo "ARRAY TASK $SLURM_ARRAY_TASK_ID / ${ARRAY_SIZE:?need ARRAY_SIZE from submit_render.sh} WITH_DENSITY=$WITH_DENSITY HOLE_RADIUS=$HOLE_RADIUS SAMPLES=$SAMPLES on $(hostname) $(date)"
-bash render_node.sh "$SLURM_ARRAY_TASK_ID" "$ARRAY_SIZE" "$STRIDE" "$RENDER_DIR"
+bash "$GW_ROOT/lib/render_node.sh" "$SLURM_ARRAY_TASK_ID" "$ARRAY_SIZE" "$STRIDE" "$RENDER_DIR"

@@ -36,7 +36,7 @@ expand_frames() {
           rng="${tok%%:*}"; step="${tok#*:}"; [[ "$step" == "$tok" ]] && step="$STRIDE"
           seq "${rng%%-*}" "$step" "${rng##*-}" | awk '{printf "%06d\n",$1}'
         else
-          printf '%06d\n' "$tok"
+          printf '%06d\n' "$((10#$tok))"   # 10# forces base-10 -- a zero-padded token (e.g. 001734) must NOT be parsed as octal
         fi
       done ;;
   esac
@@ -80,7 +80,7 @@ jid=$(sbatch --parsable \
   --array="0-$((A-1))%${CAP}" \
   -o "$RENDER_DIR/logs/render_%A_%a.log" \
   --export=ALL,FRAMES_FILE="$LIST",ARRAY_SIZE="$A",RENDER_DIR="$RENDER_DIR",OBJ_DIR="$OBJ_DIR",WITH_DENSITY="$WD",DISK_MANIFEST="$DISK_MANIFEST",HOLE_RADIUS="$HOLE_RADIUS",ZSCALE="$ZSCALE",DISK_MARGIN="$DISK_MARGIN",SAMPLES="$SAMPLES",STRIDE="$STRIDE" \
-  "$HERE/render_array_job.sh")
+  "$HERE/lib/render_array_job.sh")
 echo "submitted job $jid  ($A tasks)"
 echo "  watch:  squeue -j $jid"
 echo "  count:  ls $RENDER_DIR/hplus_*.obj.png 2>/dev/null | wc -l   (expect $N when done)"

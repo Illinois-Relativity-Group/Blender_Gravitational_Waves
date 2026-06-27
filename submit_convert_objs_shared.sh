@@ -18,5 +18,5 @@ python3 -c "import meshio" 2>/dev/null || pip install --user -q -r requirements.
 export NPROC=${SLURM_NTASKS:-32}
 mkdir -p "$OBJ_DIR"
 echo "START $(date) on $(hostname); NPROC=$NPROC"
-python3 convert_objs_parallel.py
+python3 "$GW_ROOT/lib/convert_objs_parallel.py"
 echo "EXIT rc=$? $(date); OBJs in $OBJ_DIR: $(ls "$OBJ_DIR"/*.obj 2>/dev/null | wc -l)"
