@@ -108,7 +108,7 @@ bpy.ops.wm.obj_import(filepath=frame_dir + filename,
                         forward_axis='NEGATIVE_Z', up_axis='Y')
 for obj in bpy.context.selected_objects:
     obj.name = "wave"
-    obj.scale.z *= float(os.environ.get("ZSCALE", "0.7")) # blender z-scale (ZSCALE); LOCKED default 0.7. Total z-amp = scale_factor(5000)*ZSCALE (=3500 at 0.7). Cheap knob via env (default unchanged, so the locked look is preserved); no mesh regen.
+    obj.scale.z *= float(os.environ.get("ZSCALE", "0.35")) # blender z-scale (ZSCALE); LOCKED default 0.35. Total z-amp = scale_factor(5000)*ZSCALE (=1750 at 0.35). Halved from the old 0.7 to cancel the DOLLY_DIST=125 2x magnification (=0.7*125/250) so the wave shares the same on-screen ruler as the grid/disk/hole. Cheap knob via env; no mesh regen.
     obj.rotation_euler = (90*np.pi/180, -120*np.pi/180, 0)
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
     bpy.ops.object.shade_smooth()
