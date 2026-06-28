@@ -38,10 +38,16 @@ export FRAMES=all                          # what to render: all | "0 5000" | "0
 export MAX_TASKS=48                        # SLURM array cap (array auto-sizes to min(#frames, MAX_TASKS))
 
 export WITH_DISK=1                         # 1 = composite disk in-render, 0 = mesh-only
-export DISK_FOLDER=...full_density_movie_newopa   # disk PNGs (input to build_disk_manifest.py)
-export DISK_MANIFEST=$GW_ROOT/disk_manifest_newopa.txt  # built manifest (the renderer reads this)
+export DISK_FOLDER=...   # <-- PER-USER: point at YOUR disk PNGs (input to build_disk_manifest.py)
+export DISK_MANIFEST=... # <-- PER-USER: where build_disk_manifest.py writes / the renderer reads
 export HOLE_RADIUS=7.5  export ZSCALE=0.7   export DISK_MARGIN=0   export SAMPLES=128
 ```
+
+> **`DISK_FOLDER` / `DISK_MANIFEST` are per-user paths.** The values checked into `config.sh` are
+> one person's local render and **will not exist on your machine** — repoint `DISK_FOLDER` at *your
+> own* disk PNG set (rendered at VisIt `imageZoom=2` / the meshmatch view) and `DISK_MANIFEST` at
+> wherever you want the manifest, then build it (next section). Everything else in `config.sh` is a
+> portable default. (Mesh-only renders, `WITH_DISK=0`, need neither.)
 
 ## Step 1 — VTK → OBJ (resumable)
 

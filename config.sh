@@ -41,8 +41,13 @@ export BLENDER_THREADS="${BLENDER_THREADS:-12}"  # cpu threads per Blender proc
 
 # --- step 2: the DISK overlay + look knobs (defaults = current production look) ---
 export WITH_DISK="${WITH_DISK:-1}"          # 1 = composite the accretion disk in-render, 0 = mesh-only
-export DISK_FOLDER="${DISK_FOLDER:-$GW_ROOT/density_test/full_density_movie_newopa}"  # disk PNGs (build_disk_manifest.py input); MUST be the imageZoom=2 (meshmatch) render set
-export DISK_MANIFEST="${DISK_MANIFEST:-$GW_ROOT/disk_manifest_newopa.txt}"            # built manifest (the renderer reads this)
+# PER-USER PATHS: the two defaults below are one person's local render and will NOT exist on your
+# machine. Point DISK_FOLDER at YOUR disk PNGs (rendered at VisIt imageZoom=2 / the meshmatch view),
+# set DISK_MANIFEST to wherever you want the manifest, then build it:
+#     python3 build_disk_manifest.py "$DISK_FOLDER" "$DISK_MANIFEST"
+# (Only needed when WITH_DISK=1; mesh-only renders ignore both.)
+export DISK_FOLDER="${DISK_FOLDER:-$GW_ROOT/density_test/full_density_movie_newopa}"  # <-- EDIT to your disk PNGs (imageZoom=2 meshmatch set)
+export DISK_MANIFEST="${DISK_MANIFEST:-$GW_ROOT/disk_manifest_newopa.txt}"            # <-- EDIT: manifest path (build_disk_manifest.py writes it, the renderer reads it)
 export HOLE_RADIUS="${HOLE_RADIUS:-7.5}"    # central cutout radius (PHYSICAL M_sun); current look = 7.5 (was 15; halved so disk & mesh share one ruler and the hole frames the ~7 M_sun disk)
 export ZSCALE="${ZSCALE:-0.7}"              # wave-height multiplier
 export DISK_MARGIN="${DISK_MARGIN:-0}"      # M_sun lift of the disk billboard toward the camera (0 = in-plane)
