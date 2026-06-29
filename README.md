@@ -40,7 +40,7 @@ export MAX_TASKS=48                        # SLURM array cap (array auto-sizes t
 export WITH_DISK=1                         # 1 = composite disk in-render, 0 = mesh-only
 export DISK_FOLDER=...   # <-- PER-USER: point at YOUR disk PNGs (input to build_disk_manifest.py)
 export DISK_MANIFEST=... # <-- PER-USER: where build_disk_manifest.py writes / the renderer reads
-export HOLE_RADIUS=7.5  export ZSCALE=0.7   export DISK_MARGIN=0   export SAMPLES=128
+export HOLE_RADIUS=7.5  export ZSCALE=0.35  export DISK_MARGIN=0   export SAMPLES=128
 ```
 
 > **`DISK_FOLDER` / `DISK_MANIFEST` are per-user paths.** The values checked into `config.sh` are
@@ -141,8 +141,11 @@ accretion disk (VisIt-rendered at `imageZoom=2`) sits at its *true* physical siz
 **one ruler measures both the grid and the disk** (the disk no longer reads 2x too big). The 2x is
 done by *dollying in*, not telephoto, so the converging-grid perspective is preserved; a telephoto
 (`ZOOM>1`) gives the same magnification but flattens the perspective. The disk billboard, time label,
-and grid cell size all auto-track `DOLLY_DIST`/`ZOOM`, so the scale stays consistent. Both are
-env-overridable for experiments but locked by default.
+and grid cell size all auto-track `DOLLY_DIST`/`ZOOM`, so the scale stays consistent. The wave height
+is the one feature that does **not** auto-track (it's a free physical knob), so `ZSCALE` was halved
+`0.7 -> 0.35` (`= 0.7*125/250`) to cancel the same 2x magnification — the waves now share the one
+ruler with the grid/disk/hole instead of rendering 2x too tall. All of these are env-overridable for
+experiments but locked by default.
 
 ## Pitfalls & fixes
 
