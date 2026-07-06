@@ -49,7 +49,7 @@ export WITH_DISK="${WITH_DISK:-1}"          # 1 = composite the accretion disk i
 export DISK_FOLDER="${DISK_FOLDER:-$GW_ROOT/density_test/full_density_movie_newopa}"  # <-- EDIT to your disk PNGs (imageZoom=2 meshmatch set)
 export DISK_MANIFEST="${DISK_MANIFEST:-$GW_ROOT/disk_manifest_newopa.txt}"            # <-- EDIT: manifest path (build_disk_manifest.py writes it, the renderer reads it)
 export HOLE_RADIUS="${HOLE_RADIUS:-7.5}"    # central cutout radius (PHYSICAL M_sun); current look = 7.5 (was 15; halved so disk & mesh share one ruler and the hole frames the ~7 M_sun disk)
-export ZSCALE="${ZSCALE:-0.35}"             # wave-height multiplier; 0.35 = 0.7*125/250 cancels the DOLLY_DIST=125 2x magnification so waves share the grid/disk ruler (was 0.7 pre-dolly)
+export ZSCALE="${ZSCALE:-105}"              # wave-height multiplier. Default 105 = 0.35 x ~300 for the FOUR-MODE mesh (it is ~300x shallower than all-mode). Use ZSCALE=0.35 for an all-mode mesh (0.35 = 0.7*125/250 cancels the DOLLY_DIST=125 2x magnification so waves share the grid/disk ruler).
 export DISK_MARGIN="${DISK_MARGIN:-0}"      # M_sun lift of the disk billboard toward the camera (0 = in-plane)
 export SAMPLES="${SAMPLES:-128}"            # Cycles render samples (quality vs speed)
 
