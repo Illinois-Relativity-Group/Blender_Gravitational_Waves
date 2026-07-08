@@ -216,36 +216,41 @@ bpy.context.scene.camera = camera_used
 #------Add density------#
 
 if with_density == "1":
-    print("Adding disk as a camera-facing billboard at the disk depth (meshmatch view)...")
-    # The _gw_ disk frames are VisIt-rendered from this SAME 37.4-deg grazing view (the 'meshmatch'
-    # view: parallelScale 50.625 == this render's half-height in M_sun at _DOLLY_DIST). They are
-    # therefore ALREADY foreshortened to the camera, so we must NOT lay them flat in the orbital
-    # plane (that would foreshorten a second time -> squashed disk). Instead we billboard the frame
-    # facing the camera, centered on the optical axis, sized to fill the render 1:1 (the same
-    # full-frame overlay the 2D composite used). By default it sits at the origin's depth (in-plane),
-    # so the z-buffer interleaves it with the waves -- the disk seats in the plane. Set DISK_MARGIN>0
-    # to LIFT it toward the camera so the central waves no longer cut it (it then floats above the
-    # plane). The transparent (alpha-0) background shows the waves/white-plane.
+    print("Adding disk as a FLAT top-down card lying in the orbital plane (grazing view)...")
+    # NEW (flat top-down disk): the disk PNG is now a face-on / top-down density map (NOT the old
+    # pre-foreshortened grazing render). So we lay the card FLAT in the orbital plane and let the
+    # grazing camera foreshorten it exactly once -> it reads as a flat disk seated on the fabric.
+    # (This is the opposite of the old path, which billboarded a pre-foreshortened frame at the
+    # camera.) World size is unchanged from the engineered overlay -- only the orientation flips from
+    # camera-facing to in-plane. The card sits EXACTLY in the orbital plane (y=0) and is CLIPPED to
+    # the hole (see below), so the disk (~4-5 M_sun) seats inside the HOLE_RADIUS cutout with its
+    # transparent margin removed. Transparent (alpha-0) bg shows the backdrop through the hole.
     # Per-frame disk image comes from DISK_IMAGE (the driver sets it); falls back to the test card.
     image_path = os.environ.get("DISK_IMAGE",
         "/anvil/scratch/x-yguo11/blender_gw_dev/density_movies/disk_card_0010.png")
-    # DISK_MARGIN (M_sun) lifts the billboard toward the camera. Default 0 = at the origin's depth
-    # (in-plane; z-buffer interleaves with the waves -- the original placement). >0 floats it in front
-    # of the central waves so they don't cut it. Centered on the optical axis + rescaled, so the
-    # on-screen position/size stay pixel-identical regardless of margin.
-    _margin  = float(os.environ.get("DISK_MARGIN", "0"))                # M_sun lifted toward the camera (0 = in-plane)
-    _to_cam  = camera_used.location.normalized()                        # origin->camera unit dir (origin at 0)
-    _Dorig   = _DOLLY_DIST - _margin                                    # billboard depth (closer than the origin)
-    _loc     = _to_cam * _margin                                        # origin shifted toward the camera
-    _hw = _Dorig * (camera_data.sensor_width / 2.0) / camera_data.lens  # render half-width (M_sun) at that depth
+    # Placement: EXACTLY in the orbital plane by default. The coplanar z-fight with the flat mesh
+    # (t/M=0 and the flat tail) is avoided by CLIPPING the card to the hole below (INTERSECT with the
+    # same HOLE_RADIUS cylinder that cuts the mesh): mesh keeps r>HOLE_RADIUS, card keeps
+    # r<HOLE_RADIUS -> complementary, zero overlap, nothing to z-fight. DISK_MARGIN>0 optionally
+    # floats the card off the plane toward the camera (orbital normal (0,-1,0), camera at y<0 -> -y).
+    _margin  = float(os.environ.get("DISK_MARGIN", "0"))                # optional M_sun lift toward the camera; default 0 = EXACTLY in the orbital plane
+    _loc     = mathutils.Vector((0.0, -_margin, 0.0))                   # in-plane by default; the hole-clip (below) prevents any z-fight
+    _hw = _DOLLY_DIST * (camera_data.sensor_width / 2.0) / camera_data.lens  # render half-width (M_sun); engineered size unchanged (tiny lift = negligible size change)
     _rh = bpy.context.scene.render.resolution_y / bpy.context.scene.render.resolution_x
     bpy.ops.mesh.primitive_plane_add(size=2, enter_editmode=False, location=_loc)
     plane = bpy.context.active_object
     plane.name = "disk_billboard"
-    plane.rotation_euler = camera_used.rotation_euler                  # face the camera, upright (no roll)
+    plane.rotation_euler = (math.radians(90), 0.0, 0.0)               # lie FLAT in the orbital plane (normal -> world -Y, matches the fabric). Roll irrelevant for the radial disk.
     _dscale = float(os.environ.get("DISK_SCALE", "1.0"))              # per-frame gauge-shrink size normalization (manifest col 3)
     plane.scale = (_hw * _dscale, _hw * _rh * _dscale, 1.0)           # fill frame 1:1 at depth, x DISK_SCALE -> hold constant apparent size
     bpy.ops.object.transform_apply(location=False, rotation=False, scale=True)
+    # Clip the card to the hole (same cylinder that cuts the mesh) so its transparent margin never
+    # overlaps the coplanar flat mesh -> no z-fight even with the card exactly in-plane. EXACT solver
+    # handles the coarse quad-vs-cylinder cut cleanly; the disk (well inside the hole) is untouched.
+    _clip = plane.modifiers.new(name="Clip_To_Hole", type='BOOLEAN')
+    _clip.object = bpy.data.objects["Boolean_Cylinder"]
+    _clip.operation = 'INTERSECT'
+    _clip.solver = 'EXACT'
     plane.visible_shadow = False                                      # don't cast the disk card's shadow on the waves
     plane_mat = nsns_node_group(image_path)
     plane.data.materials.append(plane_mat)
