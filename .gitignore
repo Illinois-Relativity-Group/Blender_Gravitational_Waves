@@ -16,7 +16,7 @@ render_*/
 # --- movie frame sequences ---
 frames_*/
 density_movies/
-
+density_2D_test/
 # --- assembled movie runs (one timestamped dir per run; see run_movie.sh) ---
 MOVIES/
 
